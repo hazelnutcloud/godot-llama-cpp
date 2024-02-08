@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 import os
+from SCons.Script import ARGUMENTS, Default, Environment, Glob, Help, SConscript, Variables
+from SCons.Errors import UserError
+from SCons.Variables import BoolVariable, PathVariable
 
 
 def normalize_path(val, env):
@@ -57,7 +60,7 @@ file = "{}{}{}".format(libname, env["suffix"], env["SHLIBSUFFIX"])
 
 if env["platform"] == "macos":
     platlibname = "{}.{}.{}".format(libname, env["platform"], env["target"])
-    file = "{}.framework/{}".format(env["platform"], platlibname, platlibname)
+    file = "{}.framework/{}".format(env["platform"], platlibname)
 
 libraryfile = "bin/{}/{}".format(env["platform"], file)
 library = env.SharedLibrary(
