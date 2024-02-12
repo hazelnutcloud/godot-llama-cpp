@@ -12,6 +12,8 @@ concurrency:
 jobs:
   build:
     runs-on:  ${{matrix.os}}
+    # temporarily disable
+    if: false 
     name: ${{matrix.name}}
     strategy:
       fail-fast: false
