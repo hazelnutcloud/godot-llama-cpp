@@ -8,6 +8,9 @@ namespace godot {
 	class LlamaModel : public Resource {
 		GDCLASS(LlamaModel, Resource)
 
+  private:
+    llama_model *model = nullptr;
+
 	protected:
 		static void _bind_methods();
 

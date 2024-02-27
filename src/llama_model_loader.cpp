@@ -8,12 +8,12 @@ using namespace godot;
 
 PackedStringArray LlamaModelLoader::_get_recognized_extensions() const {
 	PackedStringArray arr;
-	arr.append("gguf");
+	arr.push_back("gguf");
 	return arr;
 }
 
 Variant godot::LlamaModelLoader::_load(const String &path, const String &original_path, bool use_sub_threads, int32_t cache_mode) const {
-	LlamaModel *model = memnew(LlamaModel);
+	Ref<LlamaModel> model = memnew(LlamaModel);
 
 	if (!FileAccess::file_exists(path)) {
 		return ERR_FILE_NOT_FOUND;
@@ -24,4 +24,18 @@ Variant godot::LlamaModelLoader::_load(const String &path, const String &origina
 	model->load_model(absPath);
 	
 	return { model };
+}
+
+bool LlamaModelLoader::_handles_type(const StringName &type) const {
+  return ClassDB::is_parent_class(type, "LlamaModel");
+}
+
+String LlamaModelLoader::_get_resource_type(const String &p_path) const {
+  String el = p_path.get_extension().to_lower();
+
+  if (el == "gguf") {
+    return "LlamaModel";
+  }
+
+  return "";
 }
