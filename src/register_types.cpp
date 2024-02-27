@@ -6,6 +6,8 @@
 #include <godot_cpp/classes/resource_loader.hpp>
 #include "llama_model.h"
 #include "llama_model_loader.h"
+#include "llama_context.h"
+#include "llama_backend.h"
 
 using namespace godot;
 
@@ -21,6 +23,8 @@ void initialize_gdextension_types(ModuleInitializationLevel p_level)
 	ResourceLoader::get_singleton()->add_resource_format_loader(llamaModelLoader);
 
 	ClassDB::register_class<LlamaModel>();
+  ClassDB::register_class<LlamaContext>();
+  ClassDB::register_class<LlamaBackend>();
 }
 
 void uninitialize_gdextension_types(ModuleInitializationLevel p_level) {

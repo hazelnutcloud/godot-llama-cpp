@@ -12,11 +12,7 @@ namespace godot {
 		LlamaModel model;
 
 	protected:
-		static void _bind_methods();
-
-	public:
-		LlamaContext();
-		~LlamaContext();
+		static void _bind_methods(){};
 	};
 }
 

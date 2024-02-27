@@ -13,3 +13,11 @@ config_version=5
 config/name="godot cpp template"
 config/features=PackedStringArray("4.2", "Forward Plus")
 config/icon="res://icon.svg"
+
+[autoload]
+
+__LlamaBackendAutoload="*res://addons/godot-llama-cpp/llama-backend-autoload.gd"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godot-llama-cpp/plugin.cfg")

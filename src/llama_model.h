@@ -1,6 +1,7 @@
 #ifndef LLAMA_MODEL_H
 #define LLAMA_MODEL_H
 
+#include <llama.h>
 #include <godot_cpp/classes/resource.hpp>
 
 namespace godot {
@@ -16,6 +17,7 @@ namespace godot {
 
 	public:
 		void load_model( const String &path );
+    ~LlamaModel();
 	};
 
 } //namespace godot

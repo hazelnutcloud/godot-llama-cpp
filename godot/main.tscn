@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://4qxcq8133fbq"]
+
+[ext_resource type="Texture2D" uid="uid://dhjbdhto6je6g" path="res://huggingface.svg" id="1_aejrq"]
+
+[node name="Node" type="Node"]
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(571, 299)
+texture = ExtResource("1_aejrq")

@@ -53,4 +53,4 @@ zig-cache
 zig-out
 *.gguf
 
-godot/bin/lib/*
+godot/addons/godot-llama-cpp/lib/*
