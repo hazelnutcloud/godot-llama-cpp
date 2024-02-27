@@ -20,8 +20,11 @@ pub fn build(b: *std.Build) !void {
     b.build_root.handle.access("godot_cpp/gen", .{}) catch |e| {
         switch (e) {
             error.FileNotFound => {
-                const binds_run = b.addSystemCommand(&.{ "python", "binding_generator.py", "godot_cpp/gdextension/extension_api.json", "godot_cpp" });
-                lib_godot.step.dependOn(&binds_run.step);
+                _ = try std.ChildProcess.run(.{
+                    .allocator = b.allocator,
+                    .argv = &.{ "python", "binding_generator.py", "godot_cpp/gdextension/extension_api.json", "godot_cpp" },
+                    .cwd_dir = b.build_root.handle,
+                });
             },
             else => {
                 return;
