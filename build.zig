@@ -7,7 +7,7 @@ const extension_name = "godot-llama-cpp";
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-    const zig_triple = try target.result.zigTriple(b.allocator);
+    const zig_triple = try target.result.linuxTriple(b.allocator);
 
     var objs = std.ArrayList(*std.Build.Step.Compile).init(b.allocator);
 
@@ -205,7 +205,7 @@ pub fn build(b: *std.Build) !void {
         try objs.append(ggml_vulkan);
     }
 
-    const extension = b.addSharedLibrary(.{ .name = b.fmt("{s}-{s}", .{ extension_name, zig_triple }), .target = target, .optimize = optimize });
+    const extension = b.addSharedLibrary(.{ .name = b.fmt("{s}-{s}-{s}", .{ extension_name, zig_triple, @tagName(optimize) }), .target = target, .optimize = optimize });
     const sources = try findFilesRecursive(b, "src", &cfiles_exts);
     extension.addCSourceFiles(.{ .files = sources, .flags = &.{ "-std=c++17", "-fno-exceptions" } });
     extension.addIncludePath(.{ .path = "src" });
