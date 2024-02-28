@@ -3,6 +3,7 @@
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/project_settings.hpp>
+#include <godot_cpp/classes/engine.hpp>
 
 using namespace godot;
 
@@ -18,6 +19,10 @@ Variant godot::LlamaModelLoader::_load(const String &path, const String &origina
 	if (!FileAccess::file_exists(path)) {
 		return ERR_FILE_NOT_FOUND;
 	}
+
+  if (Engine::get_singleton()->is_editor_hint()) {
+    return { model };
+  }
 
 	String absPath = ProjectSettings::get_singleton()->globalize_path(path);
 

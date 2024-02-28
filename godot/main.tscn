@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3 uid="uid://7oo8yj56scb1"]
+[gd_scene load_steps=4 format=3 uid="uid://7oo8yj56scb1"]
 
 [ext_resource type="Texture2D" uid="uid://dplw232htshgc" path="res://addons/godot-llama-cpp/assets/godot-llama-cpp-1024x1024.svg" id="1_ojdoj"]
 [ext_resource type="Script" path="res://main.gd" id="1_wiuk3"]
+[ext_resource type="LlamaModel" path="res://models/stablelm-2-zephyr-1_6b-Q4_K_M.gguf" id="3_hnmbg"]
 
 [node name="Node" type="Node"]
 script = ExtResource("1_wiuk3")
@@ -10,3 +11,6 @@ script = ExtResource("1_wiuk3")
 position = Vector2(601, 325)
 scale = Vector2(0.2, 0.2)
 texture = ExtResource("1_ojdoj")
+
+[node name="LlamaContext" type="LlamaContext" parent="."]
+model = ExtResource("3_hnmbg")
