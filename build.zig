@@ -224,6 +224,7 @@ pub fn build(b: *std.Build) !void {
         extension.linkFramework("MetalKit");
         extension.linkFramework("Foundation");
         extension.linkFramework("Accelerate");
+        b.installFile("llama.cpp/ggml-metal.metal", b.pathJoin(&.{ std.fs.path.basename(b.lib_dir), "ggml-metal.metal" }));
     } else {
         if (target.result.os.tag == .windows) {
             const vk_path = b.graph.env_map.get("VK_SDK_PATH") orelse @panic("VK_SDK_PATH not set");
