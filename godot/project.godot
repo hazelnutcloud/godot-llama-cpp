@@ -13,11 +13,11 @@ config_version=5
 config/name="godot-llama-cpp"
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.2", "Forward Plus")
-config/icon="res://icon.svg"
 
 [autoload]
 
 __LlamaBackend="*res://addons/godot-llama-cpp/autoloads/llama-backend.gd"
+Llama="*res://autoloads/llama.tscn"
 
 [editor_plugins]
 

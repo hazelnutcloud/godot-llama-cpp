@@ -1,3 +1,4 @@
+# This script will be autoloaded by the editor plugin
 extends Node
 
 var backend: LlamaBackend = LlamaBackend.new()
