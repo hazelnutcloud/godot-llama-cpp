@@ -14,29 +14,63 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.980392, 0.952941, 0.929412, 1)
 
-[node name="GodotLlamaSprite" type="Sprite2D" parent="."]
-position = Vector2(578, 265)
-scale = Vector2(0.2, 0.2)
-texture = ExtResource("1_ojdoj")
-
-[node name="HBoxContainer" type="HBoxContainer" parent="."]
-visible = false
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -138.0
-offset_top = -180.0
-offset_right = 138.0
-offset_bottom = -42.0
+[node name="Form" type="HBoxContainer" parent="."]
+custom_minimum_size = Vector2(300, 50)
+anchors_preset = -1
+anchor_top = 0.7
+anchor_right = 1.0
+anchor_bottom = 0.7
+offset_left = 350.0
+offset_top = -1.66893e-05
+offset_right = -350.0
+offset_bottom = 50.0
 grow_horizontal = 2
 grow_vertical = 0
 alignment = 1
 
-[node name="TextEdit" type="TextEdit" parent="HBoxContainer"]
+[node name="Input" type="TextEdit" parent="Form"]
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 3.0
 placeholder_text = "Ask me anything..."
 
-[node name="Button" type="Button" parent="HBoxContainer"]
+[node name="SubmitButton" type="Button" parent="Form"]
 layout_mode = 2
+size_flags_horizontal = 3
+text = "Submit"
+
+[node name="SpriteContainer" type="CenterContainer" parent="."]
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.4
+anchor_right = 0.5
+anchor_bottom = 0.4
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="GodotLlamaSprite" type="Sprite2D" parent="SpriteContainer"]
+position = Vector2(20, 20)
+scale = Vector2(0.2, 0.2)
+texture = ExtResource("1_ojdoj")
+
+[node name="Label" type="Label" parent="."]
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.6
+anchor_right = 0.5
+anchor_bottom = 0.6
+offset_left = -127.0
+offset_top = -22.5
+offset_right = 127.0
+offset_bottom = 22.5
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.101961, 0.0823529, 0.0627451, 1)
+theme_override_font_sizes/font_size = 32
+text = "godot-llama-cpp"
+
+[connection signal="pressed" from="Form/SubmitButton" to="." method="_on_button_pressed"]
