@@ -4,11 +4,16 @@
 
 using namespace godot;
 
-void LlamaBackend::_enter_tree() {
+void LlamaBackend::init() {
   llama_backend_init();
   llama_numa_init(ggml_numa_strategy::GGML_NUMA_STRATEGY_DISABLED);
 }
 
-void LlamaBackend::_exit_tree() {
+void LlamaBackend::deinit() {
   llama_backend_free();
+}
+
+void LlamaBackend::_bind_methods() {
+  ClassDB::bind_method(D_METHOD("init"), &LlamaBackend::init);
+  ClassDB::bind_method(D_METHOD("deinit"), &LlamaBackend::deinit);
 }

@@ -1,8 +1,10 @@
-[gd_scene load_steps=2 format=3 uid="uid://7oo8yj56scb1"]
+[gd_scene load_steps=3 format=3 uid="uid://7oo8yj56scb1"]
 
 [ext_resource type="Texture2D" uid="uid://dplw232htshgc" path="res://addons/godot-llama-cpp/assets/godot-llama-cpp-1024x1024.svg" id="1_ojdoj"]
+[ext_resource type="Script" path="res://main.gd" id="1_wiuk3"]
 
 [node name="Node" type="Node"]
+script = ExtResource("1_wiuk3")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 position = Vector2(601, 325)

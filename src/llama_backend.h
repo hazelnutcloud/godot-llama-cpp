@@ -1,18 +1,18 @@
 #ifndef LLAMA_BACKEND_H
 #define LLAMA_BACKEND_H
 
-#include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/classes/ref_counted.hpp>
 
 namespace godot {
-class LlamaBackend : public Node {
-	GDCLASS(LlamaBackend, Node)
+class LlamaBackend : public RefCounted {
+	GDCLASS(LlamaBackend, RefCounted)
 
 protected:
-	static void _bind_methods(){};
+	static void _bind_methods();
 
 public:
-  virtual void _enter_tree() override;
-  virtual void _exit_tree() override;
+  void init();
+  void deinit();
 };
 } //namespace godot
 
