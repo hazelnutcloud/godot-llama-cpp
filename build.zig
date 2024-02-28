@@ -225,7 +225,13 @@ pub fn build(b: *std.Build) !void {
         extension.linkFramework("Foundation");
         extension.linkFramework("Accelerate");
     } else {
-        extension.linkSystemLibrary("vulkan");
+        if (target.result.os.tag == .windows) {
+            const vk_path = b.graph.env_map.get("VK_SDK_PATH") orelse @panic("VK_SDK_PATH not set");
+            extension.addLibraryPath(.{ .path = b.pathJoin(&.{ vk_path, "Lib" }) });
+            extension.linkSystemLibrary("vulkan-1");
+        } else {
+            extension.linkSystemLibrary("vulkan");
+        }
     }
     extension.linkLibrary(lib_godot);
 
@@ -250,6 +256,10 @@ fn buildObj(params: BuildObjectParams) *std.Build.Step.Compile {
         .target = params.target,
         .optimize = params.optimize,
     });
+    if (params.target.result.os.tag == .windows) {
+        const vk_path = params.b.graph.env_map.get("VK_SDK_PATH") orelse @panic("VK_SDK_PATH not set");
+        obj.addIncludePath(.{ .path = params.b.pathJoin(&.{ vk_path, "include" }) });
+    }
     for (params.include_paths) |path| {
         obj.addIncludePath(.{ .path = path });
     }
