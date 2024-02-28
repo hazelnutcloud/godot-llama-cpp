@@ -9,7 +9,7 @@ namespace godot {
 		GDCLASS(LlamaContext, Node)
 
 	private:
-		LlamaModel model;
+		Ref<LlamaModel> model;
 
 	protected:
 		static void _bind_methods(){};

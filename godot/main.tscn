@@ -1,9 +1,10 @@
-[gd_scene load_steps=2 format=3 uid="uid://4qxcq8133fbq"]
+[gd_scene load_steps=2 format=3 uid="uid://7oo8yj56scb1"]
 
-[ext_resource type="Texture2D" uid="uid://dhjbdhto6je6g" path="res://huggingface.svg" id="1_aejrq"]
+[ext_resource type="Texture2D" uid="uid://dplw232htshgc" path="res://addons/godot-llama-cpp/assets/godot-llama-cpp-1024x1024.svg" id="1_ojdoj"]
 
 [node name="Node" type="Node"]
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
-position = Vector2(571, 299)
-texture = ExtResource("1_aejrq")
+position = Vector2(601, 325)
+scale = Vector2(0.2, 0.2)
+texture = ExtResource("1_ojdoj")

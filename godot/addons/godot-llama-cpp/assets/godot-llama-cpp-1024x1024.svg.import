@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dhjbdhto6je6g"
-path="res://.godot/imported/huggingface.svg-9363a2c9e9c5c727088a277ba09b758a.ctex"
+uid="uid://dplw232htshgc"
+path="res://.godot/imported/godot-llama-cpp-1024x1024.svg-0f412fe282a705cdf65256e51c97ddd2.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://huggingface.svg"
-dest_files=["res://.godot/imported/huggingface.svg-9363a2c9e9c5c727088a277ba09b758a.ctex"]
+source_file="res://addons/godot-llama-cpp/assets/godot-llama-cpp-1024x1024.svg"
+dest_files=["res://.godot/imported/godot-llama-cpp-1024x1024.svg-0f412fe282a705cdf65256e51c97ddd2.ctex"]
 
 [params]
 

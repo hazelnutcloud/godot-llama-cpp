@@ -4,7 +4,7 @@ extends EditorPlugin
 
 func _enter_tree():
 	# Initialization of the plugin goes here.
-	add_autoload_singleton("__LlamaBackendAutoload", "res://addons/godot-llama-cpp/llama-backend-autoload.gd")
+	add_autoload_singleton("__LlamaBackendAutoload", "res://addons/godot-llama-cpp/autoloads/llama-backend-autoload.gd")
 
 
 func _exit_tree():
