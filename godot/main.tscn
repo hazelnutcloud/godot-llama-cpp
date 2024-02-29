@@ -1,7 +1,13 @@
-[gd_scene load_steps=3 format=3 uid="uid://7oo8yj56scb1"]
+[gd_scene load_steps=4 format=3 uid="uid://7oo8yj56scb1"]
 
 [ext_resource type="Texture2D" uid="uid://dplw232htshgc" path="res://addons/godot-llama-cpp/assets/godot-llama-cpp-1024x1024.svg" id="1_ojdoj"]
 [ext_resource type="Script" path="res://main.gd" id="1_vvrqe"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3e37a"]
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
 
 [node name="Main" type="Node"]
 script = ExtResource("1_vvrqe")
@@ -14,63 +20,83 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.980392, 0.952941, 0.929412, 1)
 
-[node name="Form" type="HBoxContainer" parent="."]
-custom_minimum_size = Vector2(300, 50)
-anchors_preset = -1
-anchor_top = 0.7
-anchor_right = 1.0
-anchor_bottom = 0.7
-offset_left = 350.0
-offset_top = -1.66893e-05
-offset_right = -350.0
-offset_bottom = 50.0
+[node name="CenterContainer" type="CenterContainer" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -400.0
+offset_top = -479.0
+offset_right = 400.0
+offset_bottom = 479.0
 grow_horizontal = 2
-grow_vertical = 0
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
+custom_minimum_size = Vector2(500, 0)
+layout_mode = 2
+theme_override_constants/separation = 10
 alignment = 1
 
-[node name="Input" type="TextEdit" parent="Form"]
+[node name="Name" type="Label" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.101961, 0.0823529, 0.0627451, 1)
+theme_override_font_sizes/font_size = 32
+text = "godot-llama-cpp"
+horizontal_alignment = 1
+
+[node name="MarginContainer" type="MarginContainer" parent="CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 100
+theme_override_constants/margin_right = 100
+
+[node name="TextureRect" type="TextureRect" parent="CenterContainer/VBoxContainer/MarginContainer"]
+layout_mode = 2
+texture = ExtResource("1_ojdoj")
+expand_mode = 4
+
+[node name="ScrollContainer" type="ScrollContainer" parent="CenterContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Panel" type="PanelContainer" parent="CenterContainer/VBoxContainer/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_3e37a")
+
+[node name="MarginContainer" type="MarginContainer" parent="CenterContainer/VBoxContainer/ScrollContainer/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_right = 20
+
+[node name="Output" type="Label" parent="CenterContainer/VBoxContainer/ScrollContainer/Panel/MarginContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.101961, 0.0823529, 0.0627451, 1)
+text = "Ask me anything!"
+autowrap_mode = 3
+
+[node name="Form" type="HBoxContainer" parent="CenterContainer/VBoxContainer"]
+custom_minimum_size = Vector2(500, 60)
+layout_mode = 2
+size_flags_horizontal = 4
+alignment = 1
+
+[node name="Input" type="TextEdit" parent="CenterContainer/VBoxContainer/Form"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 3.0
-placeholder_text = "Ask me anything..."
+placeholder_text = "Why do cows moo?"
 
-[node name="SubmitButton" type="Button" parent="Form"]
+[node name="SubmitButton" type="Button" parent="CenterContainer/VBoxContainer/Form"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Submit"
 
-[node name="SpriteContainer" type="CenterContainer" parent="."]
-anchors_preset = -1
-anchor_left = 0.5
-anchor_top = 0.4
-anchor_right = 0.5
-anchor_bottom = 0.4
-offset_left = -20.0
-offset_top = -20.0
-offset_right = 20.0
-offset_bottom = 20.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="GodotLlamaSprite" type="Sprite2D" parent="SpriteContainer"]
-position = Vector2(20, 20)
-scale = Vector2(0.2, 0.2)
-texture = ExtResource("1_ojdoj")
-
-[node name="Label" type="Label" parent="."]
-anchors_preset = -1
-anchor_left = 0.5
-anchor_top = 0.6
-anchor_right = 0.5
-anchor_bottom = 0.6
-offset_left = -127.0
-offset_top = -22.5
-offset_right = 127.0
-offset_bottom = 22.5
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_colors/font_color = Color(0.101961, 0.0823529, 0.0627451, 1)
-theme_override_font_sizes/font_size = 32
-text = "godot-llama-cpp"
-
-[connection signal="pressed" from="Form/SubmitButton" to="." method="_on_button_pressed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/Form/SubmitButton" to="." method="_on_button_pressed"]

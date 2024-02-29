@@ -10,6 +10,7 @@ void LlamaModel::load_model(const String &path) {
 		llama_free_model(model);
 	}
 	llama_model_params model_params = llama_model_default_params();
+  model_params.n_gpu_layers = 99; // offload all layers to the GPU
 	model = llama_load_model_from_file(path.utf8().get_data(), model_params);
 	if (model == NULL) {
 		UtilityFunctions::printerr(vformat("%s: Unable to load model from %s", __func__, path));
