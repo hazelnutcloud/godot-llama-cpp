@@ -30,6 +30,7 @@ void LlamaContext::_ready() {
 		return;
 	}
 
+  ctx_params.seed = -1;
 	ctx_params.n_ctx = 2048;
 	int32_t n_threads = OS::get_singleton()->get_processor_count();
 	ctx_params.n_threads = n_threads;
@@ -45,9 +46,9 @@ void LlamaContext::_ready() {
 
 Variant LlamaContext::request_completion(const String &prompt) {
 	UtilityFunctions::print(vformat("%s: Requesting completion for prompt: %s", __func__, prompt));
-  if (task_id) {
-    WorkerThreadPool::get_singleton()->wait_for_task_completion(task_id);
-  }
+	if (task_id) {
+		WorkerThreadPool::get_singleton()->wait_for_task_completion(task_id);
+	}
 	task_id = WorkerThreadPool::get_singleton()->add_task(Callable(this, "_fulfill_completion").bind(prompt));
 	return OK;
 }
@@ -65,9 +66,12 @@ void LlamaContext::_fulfill_completion(const String &prompt) {
 		return;
 	}
 
+	llama_batch batch = llama_batch_init(tokens_list.size(), 0, 1);
+
 	for (size_t i = 0; i < tokens_list.size(); i++) {
 		llama_batch_add(batch, tokens_list[i], i, { 0 }, false);
 	}
+  
 	batch.logits[batch.n_tokens - 1] = true;
 
 	int decode_res = llama_decode(ctx, batch);
@@ -79,6 +83,7 @@ void LlamaContext::_fulfill_completion(const String &prompt) {
 	int n_cur = batch.n_tokens;
 	int n_decode = 0;
 	llama_model *llama_model = model->model;
+
 	while (n_cur <= n_len) {
 		// sample the next token
 		{
@@ -121,9 +126,11 @@ void LlamaContext::_fulfill_completion(const String &prompt) {
 		int decode_res = llama_decode(ctx, batch);
 		if (decode_res != 0) {
 			UtilityFunctions::printerr(vformat("%s: Failed to decode batch with error code: %d", __func__, decode_res));
-			return;
+			break;
 		}
 	}
+
+	llama_batch_free(batch);
 }
 
 void LlamaContext::set_model(const Ref<LlamaModel> p_model) {
@@ -138,7 +145,6 @@ LlamaContext::~LlamaContext() {
 	if (ctx) {
 		llama_free(ctx);
 	}
-	llama_batch_free(batch);
 	if (task_id) {
 		WorkerThreadPool::get_singleton()->wait_for_task_completion(task_id);
 	}

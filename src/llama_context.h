@@ -13,7 +13,6 @@ private:
 	Ref<LlamaModel> model;
 	llama_context *ctx = nullptr;
   llama_context_params ctx_params = llama_context_default_params();
-  llama_batch batch = llama_batch_init(512, 0, 1);
   int task_id;
 
 protected:
