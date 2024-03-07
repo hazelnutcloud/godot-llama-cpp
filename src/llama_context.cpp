@@ -30,8 +30,8 @@ void LlamaContext::_ready() {
 		return;
 	}
 
-  ctx_params.seed = -1;
-	ctx_params.n_ctx = 2048;
+	ctx_params.seed = -1;
+	ctx_params.n_ctx = 4096;
 	int32_t n_threads = OS::get_singleton()->get_processor_count();
 	ctx_params.n_threads = n_threads;
 	ctx_params.n_threads_batch = n_threads;
@@ -66,13 +66,13 @@ void LlamaContext::_fulfill_completion(const String &prompt) {
 		return;
 	}
 
-	llama_batch batch = llama_batch_init(tokens_list.size(), 0, 1);
-
 	for (size_t i = 0; i < tokens_list.size(); i++) {
 		llama_batch_add(batch, tokens_list[i], i, { 0 }, false);
 	}
-  
+
 	batch.logits[batch.n_tokens - 1] = true;
+
+	llama_kv_cache_clear(ctx);
 
 	int decode_res = llama_decode(ctx, batch);
 	if (decode_res != 0) {
@@ -129,8 +129,6 @@ void LlamaContext::_fulfill_completion(const String &prompt) {
 			break;
 		}
 	}
-
-	llama_batch_free(batch);
 }
 
 void LlamaContext::set_model(const Ref<LlamaModel> p_model) {
@@ -145,6 +143,9 @@ LlamaContext::~LlamaContext() {
 	if (ctx) {
 		llama_free(ctx);
 	}
+
+	llama_batch_free(batch);
+
 	if (task_id) {
 		WorkerThreadPool::get_singleton()->wait_for_task_completion(task_id);
 	}
