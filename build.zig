@@ -194,6 +194,17 @@ pub fn build(b: *std.Build) !void {
             .link_lib_cpp = false,
             .flags = cflags.items,
         });
+        const airCommand = b.addSystemCommand(&.{ "xcrun", "-sdk", "macosx", "metal", "-O3", "-c" });
+        airCommand.addFileArg(.{ .path = "llama.cpp/ggml-metal.metal" });
+        airCommand.addArg("-o");
+        const air = airCommand.addOutputFileArg("ggml-metal.air");
+
+        const libCommand = b.addSystemCommand(&.{ "xcrun", "-sdk", "macosx", "metallib" });
+        libCommand.addFileArg(air);
+        libCommand.addArg("-o");
+        const lib = libCommand.addOutputFileArg("default.metallib");
+        const libInstall = b.addInstallLibFile(lib, "default.metallib");
+        b.getInstallStep().dependOn(&libInstall.step);
         try objs.append(ggml_metal);
     } else {
         const ggml_vulkan = buildObj(.{
@@ -229,8 +240,8 @@ pub fn build(b: *std.Build) !void {
         extension.linkFramework("MetalKit");
         extension.linkFramework("Foundation");
         extension.linkFramework("Accelerate");
-        b.installFile("llama.cpp/ggml-metal.metal", b.pathJoin(&.{ std.fs.path.basename(b.lib_dir), "ggml-metal.metal" }));
-        b.installFile("llama.cpp/ggml-common.h", b.pathJoin(&.{ std.fs.path.basename(b.lib_dir), "ggml-common.h" }));
+        // b.installFile("llama.cpp/ggml-metal.metal", b.pathJoin(&.{ std.fs.path.basename(b.lib_dir), "ggml-metal.metal" }));
+        // b.installFile("llama.cpp/ggml-common.h", b.pathJoin(&.{ std.fs.path.basename(b.lib_dir), "ggml-common.h" }));
     } else {
         if (target.result.os.tag == .windows) {
             const vk_path = b.graph.env_map.get("VK_SDK_PATH") orelse @panic("VK_SDK_PATH not set");
