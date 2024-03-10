@@ -14,9 +14,39 @@ void LlamaContext::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_model", "model"), &LlamaContext::set_model);
 	ClassDB::bind_method(D_METHOD("get_model"), &LlamaContext::get_model);
 	ClassDB::add_property("LlamaContext", PropertyInfo(Variant::OBJECT, "model", PROPERTY_HINT_RESOURCE_TYPE, "LlamaModel"), "set_model", "get_model");
+
+  ClassDB::bind_method(D_METHOD("get_seed"), &LlamaContext::get_seed);
+  ClassDB::bind_method(D_METHOD("set_seed", "seed"), &LlamaContext::set_seed);
+  ClassDB::add_property("LlamaContext", PropertyInfo(Variant::INT, "seed"), "set_seed", "get_seed");
+
+  ClassDB::bind_method(D_METHOD("get_n_ctx"), &LlamaContext::get_n_ctx);
+  ClassDB::bind_method(D_METHOD("set_n_ctx", "n_ctx"), &LlamaContext::set_n_ctx);
+  ClassDB::add_property("LlamaContext", PropertyInfo(Variant::INT, "n_ctx"), "set_n_ctx", "get_n_ctx");
+
+  ClassDB::bind_method(D_METHOD("get_n_threads"), &LlamaContext::get_n_threads);
+  ClassDB::bind_method(D_METHOD("set_n_threads", "n_threads"), &LlamaContext::set_n_threads);
+  ClassDB::add_property("LlamaContext", PropertyInfo(Variant::INT, "n_threads"), "set_n_threads", "get_n_threads");
+
+  ClassDB::bind_method(D_METHOD("get_n_threads_batch"), &LlamaContext::get_n_threads_batch);
+  ClassDB::bind_method(D_METHOD("set_n_threads_batch", "n_threads_batch"), &LlamaContext::set_n_threads_batch);
+  ClassDB::add_property("LlamaContext", PropertyInfo(Variant::INT, "n_threads_batch"), "set_n_threads_batch", "get_n_threads_batch");
+
 	ClassDB::bind_method(D_METHOD("request_completion", "prompt"), &LlamaContext::request_completion);
 	ClassDB::bind_method(D_METHOD("_fulfill_completion", "prompt"), &LlamaContext::_fulfill_completion);
+
 	ADD_SIGNAL(MethodInfo("completion_generated", PropertyInfo(Variant::STRING, "completion"), PropertyInfo(Variant::BOOL, "is_final")));
+}
+
+LlamaContext::LlamaContext() {
+	batch = llama_batch_init(4096, 0, 1);
+
+	ctx_params = llama_context_default_params();
+	ctx_params.seed = -1;
+	ctx_params.n_ctx = 4096;
+
+	int32_t n_threads = OS::get_singleton()->get_processor_count();
+	ctx_params.n_threads = n_threads;
+	ctx_params.n_threads_batch = n_threads;
 }
 
 void LlamaContext::_ready() {
@@ -30,18 +60,20 @@ void LlamaContext::_ready() {
 		return;
 	}
 
-	ctx_params.seed = -1;
-	ctx_params.n_ctx = 4096;
-	int32_t n_threads = OS::get_singleton()->get_processor_count();
-	ctx_params.n_threads = n_threads;
-	ctx_params.n_threads_batch = n_threads;
-
 	ctx = llama_new_context_with_model(model->model, ctx_params);
 	if (ctx == NULL) {
 		UtilityFunctions::printerr(vformat("%s: Failed to initialize llama context, null ctx", __func__));
 		return;
 	}
 	UtilityFunctions::print(vformat("%s: Context initialized", __func__));
+}
+
+PackedStringArray LlamaContext::_get_configuration_warnings() const {
+  PackedStringArray warnings;
+  if (model == NULL) {
+    warnings.push_back("Model resource property not defined");
+  }
+  return warnings;
 }
 
 Variant LlamaContext::request_completion(const String &prompt) {
@@ -134,9 +166,36 @@ void LlamaContext::_fulfill_completion(const String &prompt) {
 void LlamaContext::set_model(const Ref<LlamaModel> p_model) {
 	model = p_model;
 }
-
 Ref<LlamaModel> LlamaContext::get_model() {
 	return model;
+}
+
+int LlamaContext::get_seed() {
+	return ctx_params.seed;
+}
+void LlamaContext::set_seed(int seed) {
+	ctx_params.seed = seed;
+}
+
+int LlamaContext::get_n_ctx() {
+	return ctx_params.n_ctx;
+}
+void LlamaContext::set_n_ctx(int n_ctx) {
+	ctx_params.n_ctx = n_ctx;
+}
+
+int LlamaContext::get_n_threads() {
+	return ctx_params.n_threads;
+}
+void LlamaContext::set_n_threads(int n_threads) {
+	ctx_params.n_threads = n_threads;
+}
+
+int LlamaContext::get_n_threads_batch() {
+	return ctx_params.n_threads_batch;
+}
+void LlamaContext::set_n_threads_batch(int n_threads_batch) {
+	ctx_params.n_threads_batch = n_threads_batch;
 }
 
 LlamaContext::~LlamaContext() {

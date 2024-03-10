@@ -57,11 +57,12 @@ texture = ExtResource("1_ojdoj")
 expand_mode = 4
 
 [node name="ScrollContainer" type="ScrollContainer" parent="CenterContainer/VBoxContainer"]
-custom_minimum_size = Vector2(0, 60)
+custom_minimum_size = Vector2(2.08165e-12, 150)
 layout_mode = 2
 horizontal_scroll_mode = 0
 
 [node name="Panel" type="PanelContainer" parent="CenterContainer/VBoxContainer/ScrollContainer"]
+custom_minimum_size = Vector2(2.08165e-12, 2.08165e-12)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -74,7 +75,7 @@ theme_override_constants/margin_right = 20
 
 [node name="Output" type="Label" parent="CenterContainer/VBoxContainer/ScrollContainer/Panel/MarginContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(200, 0)
+custom_minimum_size = Vector2(200, 2.08165e-12)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.101961, 0.0823529, 0.0627451, 1)
 text = "Ask me anything!"
