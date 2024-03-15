@@ -175,7 +175,18 @@ pub fn build(b: *std.Build) !void {
         .link_lib_cpp = false,
         .flags = cflags.items,
     });
-    try objs.appendSlice(&.{ llama, ggml, common, console, sampling, grammar_parser, build_info, ggml_alloc, ggml_backend, ggml_quants });
+    const unicode = buildObj(.{
+        .b = b,
+        .name = "unicode",
+        .target = target,
+        .optimize = optimize,
+        .sources = &.{"llama.cpp/unicode.cpp"},
+        .include_paths = &include_paths,
+        .link_lib_c = false,
+        .link_lib_cpp = true,
+        .flags = cxxflags.items,
+    });
+    try objs.appendSlice(&.{ llama, ggml, common, console, sampling, grammar_parser, build_info, ggml_alloc, ggml_backend, ggml_quants, unicode });
 
     if (target.result.os.tag == .macos) {
         const ggml_metal = buildObj(.{
