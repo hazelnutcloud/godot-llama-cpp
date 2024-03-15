@@ -7,10 +7,6 @@ extends Node
 func _on_button_pressed():
 	handle_submit()
 	
-#func _unhandled_key_input(event: InputEvent) -> void:
-	#if (event.is_action_released("submit_form") and input.has_focus()):
-		#handle_submit()
-	
 func handle_submit():
 	print(input.text)
 	Llama.request_completion(input.text)

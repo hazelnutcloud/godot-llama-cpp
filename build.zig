@@ -39,7 +39,6 @@ pub fn build(b: *std.Build) !void {
     const lib_godot_gen_sources = try findFilesRecursive(b, "godot_cpp/gen/src", &cfiles_exts);
     lib_godot.addCSourceFiles(.{ .files = lib_godot_gen_sources, .flags = &.{ "-std=c++17", "-fno-exceptions" } });
     lib_godot.addCSourceFiles(.{ .files = lib_godot_sources, .flags = &.{ "-std=c++17", "-fno-exceptions" } });
-    // try objs.append(lib_godot);
 
     // llama.cpp
     const commit_hash = try std.ChildProcess.run(.{ .allocator = b.allocator, .argv = &.{ "git", "rev-parse", "HEAD" }, .cwd = b.pathFromRoot("llama.cpp") });
@@ -54,7 +53,13 @@ pub fn build(b: *std.Build) !void {
 
     var flags = std.ArrayList([]const u8).init(b.allocator);
     if (target.result.abi != .msvc) try flags.append("-D_GNU_SOURCE");
-    if (target.result.os.tag == .macos) try flags.appendSlice(&.{ "-D_DARWIN_C_SOURCE", "-DGGML_USE_METAL", "-DGGML_USE_ACCELERATE", "-DACCELERATE_USE_LAPACK", "-DACCELERATE_LAPACK_ILP64" }) else try flags.append("-DGGML_USE_VULKAN");
+    if (target.result.os.tag == .macos) try flags.appendSlice(&.{
+        "-D_DARWIN_C_SOURCE",
+        "-DGGML_USE_METAL",
+        "-DGGML_USE_ACCELERATE",
+        "-DACCELERATE_USE_LAPACK",
+        "-DACCELERATE_LAPACK_ILP64",
+    }) else try flags.append("-DGGML_USE_VULKAN");
     try flags.append("-D_XOPEN_SOURCE=600");
 
     var cflags = std.ArrayList([]const u8).init(b.allocator);
@@ -200,6 +205,17 @@ pub fn build(b: *std.Build) !void {
             .link_lib_cpp = false,
             .flags = cflags.items,
         });
+        const airCommand = b.addSystemCommand(&.{ "xcrun", "-sdk", "macosx", "metal", "-O3", "-c" });
+        airCommand.addFileArg(.{ .path = "llama.cpp/ggml-metal.metal" });
+        airCommand.addArg("-o");
+        const air = airCommand.addOutputFileArg("ggml-metal.air");
+
+        const libCommand = b.addSystemCommand(&.{ "xcrun", "-sdk", "macosx", "metallib" });
+        libCommand.addFileArg(air);
+        libCommand.addArg("-o");
+        const lib = libCommand.addOutputFileArg("default.metallib");
+        const libInstall = b.addInstallLibFile(lib, "default.metallib");
+        b.getInstallStep().dependOn(&libInstall.step);
         try objs.append(ggml_metal);
     } else {
         const ggml_vulkan = buildObj(.{
@@ -235,7 +251,8 @@ pub fn build(b: *std.Build) !void {
         extension.linkFramework("MetalKit");
         extension.linkFramework("Foundation");
         extension.linkFramework("Accelerate");
-        b.installFile("llama.cpp/ggml-metal.metal", b.pathJoin(&.{ std.fs.path.basename(b.lib_dir), "ggml-metal.metal" }));
+        // b.installFile("llama.cpp/ggml-metal.metal", b.pathJoin(&.{ std.fs.path.basename(b.lib_dir), "ggml-metal.metal" }));
+        // b.installFile("llama.cpp/ggml-common.h", b.pathJoin(&.{ std.fs.path.basename(b.lib_dir), "ggml-common.h" }));
     } else {
         if (target.result.os.tag == .windows) {
             const vk_path = b.graph.env_map.get("VK_SDK_PATH") orelse @panic("VK_SDK_PATH not set");

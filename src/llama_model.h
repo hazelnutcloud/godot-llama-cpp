@@ -6,17 +6,25 @@
 
 namespace godot {
 
-	class LlamaModel : public Resource {
-		GDCLASS(LlamaModel, Resource)
+class LlamaModel : public Resource {
+	GDCLASS(LlamaModel, Resource)
 
-	protected:
-		static void _bind_methods();
+private:
+	llama_model_params model_params;
 
-	public:
-    llama_model *model = nullptr;
-		void load_model( const String &path );
-    ~LlamaModel();
-	};
+protected:
+	static void _bind_methods();
+
+public:
+	llama_model *model = nullptr;
+	void load_model(const String &path);
+
+	int get_n_gpu_layers();
+	void set_n_gpu_layers(int n);
+
+	LlamaModel();
+	~LlamaModel();
+};
 
 } //namespace godot
 
