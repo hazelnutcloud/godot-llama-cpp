@@ -8,20 +8,20 @@ func _on_button_pressed():
 	handle_submit()
 	
 func handle_submit():
-	print(input.text)
-	Llama.request_completion(input.text)
+	print(Llama.prompt(input.text))
+	#print(input.text)
 	
-	input.clear()
-	input.editable = false
-	submit_button.disabled = true
-	output.text = "..."
-	
-	var completion = await Llama.completion_generated
-	output.text = ""
-	while !completion[1]:
-		print(completion[0])
-		output.text += completion[0]
-		completion = await Llama.completion_generated
-		
-	input.editable = true
-	submit_button.disabled = false
+	#input.clear()
+	#input.editable = false
+	#submit_button.disabled = true
+	#output.text = "..."
+	#
+	var completion = await Llama.text_generated
+	#output.text = ""
+	while !completion[2]:
+		print(completion)
+		#output.text += completion[0]
+		completion = await Llama.text_generated
+		#
+	#input.editable = true
+	#submit_button.disabled = false

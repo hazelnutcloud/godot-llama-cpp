@@ -6,6 +6,7 @@
 #include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/worker_thread_pool.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 using namespace godot;
@@ -15,26 +16,18 @@ void LlamaContext::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_model"), &LlamaContext::get_model);
 	ClassDB::add_property("LlamaContext", PropertyInfo(Variant::OBJECT, "model", PROPERTY_HINT_RESOURCE_TYPE, "LlamaModel"), "set_model", "get_model");
 
-  ClassDB::bind_method(D_METHOD("get_seed"), &LlamaContext::get_seed);
-  ClassDB::bind_method(D_METHOD("set_seed", "seed"), &LlamaContext::set_seed);
-  ClassDB::add_property("LlamaContext", PropertyInfo(Variant::INT, "seed"), "set_seed", "get_seed");
+	ClassDB::bind_method(D_METHOD("get_seed"), &LlamaContext::get_seed);
+	ClassDB::bind_method(D_METHOD("set_seed", "seed"), &LlamaContext::set_seed);
+	ClassDB::add_property("LlamaContext", PropertyInfo(Variant::INT, "seed"), "set_seed", "get_seed");
 
-  ClassDB::bind_method(D_METHOD("get_n_ctx"), &LlamaContext::get_n_ctx);
-  ClassDB::bind_method(D_METHOD("set_n_ctx", "n_ctx"), &LlamaContext::set_n_ctx);
-  ClassDB::add_property("LlamaContext", PropertyInfo(Variant::INT, "n_ctx"), "set_n_ctx", "get_n_ctx");
+	ClassDB::bind_method(D_METHOD("get_n_ctx"), &LlamaContext::get_n_ctx);
+	ClassDB::bind_method(D_METHOD("set_n_ctx", "n_ctx"), &LlamaContext::set_n_ctx);
+	ClassDB::add_property("LlamaContext", PropertyInfo(Variant::INT, "n_ctx"), "set_n_ctx", "get_n_ctx");
 
-  ClassDB::bind_method(D_METHOD("get_n_threads"), &LlamaContext::get_n_threads);
-  ClassDB::bind_method(D_METHOD("set_n_threads", "n_threads"), &LlamaContext::set_n_threads);
-  ClassDB::add_property("LlamaContext", PropertyInfo(Variant::INT, "n_threads"), "set_n_threads", "get_n_threads");
+	ClassDB::bind_method(D_METHOD("prompt", "prompt", "max_new_tokens", "temperature", "top_p", "top_k", "presence_penalty", "frequency_penalty"), &LlamaContext::prompt, DEFVAL(32), DEFVAL(0.80f), DEFVAL(0.95f), DEFVAL(40), DEFVAL(0.0), DEFVAL(0.0));
+	ClassDB::bind_method(D_METHOD("_thread_prompt_loop"), &LlamaContext::_thread_prompt_loop);
 
-  ClassDB::bind_method(D_METHOD("get_n_threads_batch"), &LlamaContext::get_n_threads_batch);
-  ClassDB::bind_method(D_METHOD("set_n_threads_batch", "n_threads_batch"), &LlamaContext::set_n_threads_batch);
-  ClassDB::add_property("LlamaContext", PropertyInfo(Variant::INT, "n_threads_batch"), "set_n_threads_batch", "get_n_threads_batch");
-
-	ClassDB::bind_method(D_METHOD("request_completion", "prompt"), &LlamaContext::request_completion);
-	ClassDB::bind_method(D_METHOD("_fulfill_completion", "prompt"), &LlamaContext::_fulfill_completion);
-
-	ADD_SIGNAL(MethodInfo("completion_generated", PropertyInfo(Variant::STRING, "completion"), PropertyInfo(Variant::BOOL, "is_final")));
+	ADD_SIGNAL(MethodInfo("text_generated", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "text"), PropertyInfo(Variant::BOOL, "is_final")));
 }
 
 LlamaContext::LlamaContext() {
@@ -47,6 +40,11 @@ LlamaContext::LlamaContext() {
 	int32_t n_threads = OS::get_singleton()->get_processor_count();
 	ctx_params.n_threads = n_threads;
 	ctx_params.n_threads_batch = n_threads;
+
+	sampling_params = llama_sampling_params();
+
+	n_prompts = 0;
+	should_exit = false;
 }
 
 void LlamaContext::_ready() {
@@ -66,101 +64,66 @@ void LlamaContext::_ready() {
 		return;
 	}
 	UtilityFunctions::print(vformat("%s: Context initialized", __func__));
+
+	sampling_ctx = llama_sampling_init(sampling_params);
+
+	prompt_mutex.instantiate();
+	prompt_semaphore.instantiate();
+	prompt_thread.instantiate();
+
+	prompt_thread->start(callable_mp(this, &LlamaContext::_thread_prompt_loop));
+}
+
+int LlamaContext::prompt(const String &prompt, const int max_new_tokens, const float temperature, const float top_p, const int top_k, const float presence_penalty, const float frequency_penalty) {
+	UtilityFunctions::print(vformat("%s: Prompting with prompt: %s, max_new_tokens: %d, temperature: %f, top_p: %f, top_k: %d, presence_penalty: %f, frequency_penalty: %f", __func__, prompt, max_new_tokens, temperature, top_p, top_k, presence_penalty, frequency_penalty));
+	prompt_mutex->lock();
+	int id = n_prompts++;
+	prompt_requests.push_back({ id, prompt, max_new_tokens, temperature, top_p, top_k, presence_penalty, frequency_penalty });
+	prompt_mutex->unlock();
+	prompt_semaphore->post();
+	return id;
+}
+
+void LlamaContext::_thread_prompt_loop() {
+	while (true) {
+		prompt_semaphore->wait();
+
+		prompt_mutex->lock();
+		if (should_exit) {
+			prompt_mutex->unlock();
+			return;
+		}
+		if (prompt_requests.size() == 0) {
+			prompt_mutex->unlock();
+			continue;
+		}
+		prompt_request req = prompt_requests.get(0);
+		prompt_requests.remove_at(0);
+		prompt_mutex->unlock();
+
+		UtilityFunctions::print(vformat("%s: Running prompt %d: %s, max_new_tokens: %d, temperature: %f, top_p: %f, top_k: %d, presence_penalty: %f, frequency_penalty: %f", __func__, req.id, req.prompt, req.max_new_tokens, req.temperature, req.top_p, req.top_k, req.presence_penalty, req.frequency_penalty));
+
+		llama_sampling_reset(sampling_ctx);
+		llama_batch_clear(batch);
+		llama_kv_cache_clear(ctx);
+
+		auto &params = sampling_ctx->params;
+		params.temp = req.temperature;
+		params.top_p = req.top_p;
+		params.top_k = req.top_k;
+		params.penalty_present = req.presence_penalty;
+		params.penalty_freq = req.frequency_penalty;
+
+		std::vector<llama_token> tokens = ::llama_tokenize(ctx, req.prompt.utf8().get_data(), false, true);
+	}
 }
 
 PackedStringArray LlamaContext::_get_configuration_warnings() const {
-  PackedStringArray warnings;
-  if (model == NULL) {
-    warnings.push_back("Model resource property not defined");
-  }
-  return warnings;
-}
-
-Variant LlamaContext::request_completion(const String &prompt) {
-	UtilityFunctions::print(vformat("%s: Requesting completion for prompt: %s", __func__, prompt));
-	if (task_id) {
-		WorkerThreadPool::get_singleton()->wait_for_task_completion(task_id);
+	PackedStringArray warnings;
+	if (model == NULL) {
+		warnings.push_back("Model resource property not defined");
 	}
-	task_id = WorkerThreadPool::get_singleton()->add_task(Callable(this, "_fulfill_completion").bind(prompt));
-	return OK;
-}
-
-void LlamaContext::_fulfill_completion(const String &prompt) {
-	UtilityFunctions::print(vformat("%s: Fulfilling completion for prompt: %s", __func__, prompt));
-	std::vector<llama_token> tokens_list;
-	tokens_list = ::llama_tokenize(ctx, std::string(prompt.utf8().get_data()), true);
-
-	const int n_len = 128;
-	const int n_ctx = llama_n_ctx(ctx);
-	const int n_kv_req = tokens_list.size() + (n_len - tokens_list.size());
-	if (n_kv_req > n_ctx) {
-		UtilityFunctions::printerr(vformat("%s: n_kv_req > n_ctx, the required KV cache size is not big enough\neither reduce n_len or increase n_ctx", __func__));
-		return;
-	}
-
-	for (size_t i = 0; i < tokens_list.size(); i++) {
-		llama_batch_add(batch, tokens_list[i], i, { 0 }, false);
-	}
-
-	batch.logits[batch.n_tokens - 1] = true;
-
-	llama_kv_cache_clear(ctx);
-
-	int decode_res = llama_decode(ctx, batch);
-	if (decode_res != 0) {
-		UtilityFunctions::printerr(vformat("%s: Failed to decode prompt with error code: %d", __func__, decode_res));
-		return;
-	}
-
-	int n_cur = batch.n_tokens;
-	int n_decode = 0;
-	llama_model *llama_model = model->model;
-
-	while (n_cur <= n_len) {
-		// sample the next token
-		{
-			auto n_vocab = llama_n_vocab(llama_model);
-			auto *logits = llama_get_logits_ith(ctx, batch.n_tokens - 1);
-
-			std::vector<llama_token_data> candidates;
-			candidates.reserve(n_vocab);
-
-			for (llama_token token_id = 0; token_id < n_vocab; token_id++) {
-				candidates.emplace_back(llama_token_data{ token_id, logits[token_id], 0.0f });
-			}
-
-			llama_token_data_array candidates_p = { candidates.data(), candidates.size(), false };
-
-			// sample the most likely token
-			const llama_token new_token_id = llama_sample_token_greedy(ctx, &candidates_p);
-
-			// is it an end of stream?
-			if (new_token_id == llama_token_eos(llama_model) || n_cur == n_len) {
-				call_thread_safe("emit_signal", "completion_generated", "\n", true);
-
-				break;
-			}
-
-			call_thread_safe("emit_signal", "completion_generated", vformat("%s", llama_token_to_piece(ctx, new_token_id).c_str()), false);
-
-			// prepare the next batch
-			llama_batch_clear(batch);
-
-			// push this new token for next evaluation
-			llama_batch_add(batch, new_token_id, n_cur, { 0 }, true);
-
-			n_decode += 1;
-		}
-
-		n_cur += 1;
-
-		// evaluate the current batch with the transformer model
-		int decode_res = llama_decode(ctx, batch);
-		if (decode_res != 0) {
-			UtilityFunctions::printerr(vformat("%s: Failed to decode batch with error code: %d", __func__, decode_res));
-			break;
-		}
-	}
+	return warnings;
 }
 
 void LlamaContext::set_model(const Ref<LlamaModel> p_model) {
@@ -173,39 +136,38 @@ Ref<LlamaModel> LlamaContext::get_model() {
 int LlamaContext::get_seed() {
 	return ctx_params.seed;
 }
-void LlamaContext::set_seed(int seed) {
+void LlamaContext::set_seed(const int seed) {
 	ctx_params.seed = seed;
 }
 
 int LlamaContext::get_n_ctx() {
 	return ctx_params.n_ctx;
 }
-void LlamaContext::set_n_ctx(int n_ctx) {
+void LlamaContext::set_n_ctx(const int n_ctx) {
 	ctx_params.n_ctx = n_ctx;
 }
 
-int LlamaContext::get_n_threads() {
-	return ctx_params.n_threads;
-}
-void LlamaContext::set_n_threads(int n_threads) {
-	ctx_params.n_threads = n_threads;
-}
+void LlamaContext::_exit_tree() {
+	prompt_mutex->lock();
+	should_exit = true;
+	prompt_requests.clear();
+	prompt_mutex->unlock();
 
-int LlamaContext::get_n_threads_batch() {
-	return ctx_params.n_threads_batch;
-}
-void LlamaContext::set_n_threads_batch(int n_threads_batch) {
-	ctx_params.n_threads_batch = n_threads_batch;
-}
+	prompt_semaphore->post();
 
-LlamaContext::~LlamaContext() {
+	if (prompt_thread.is_valid()) {
+		prompt_thread->wait_to_finish();
+	}
+	prompt_thread.unref();
+
 	if (ctx) {
 		llama_free(ctx);
 	}
-
-	llama_batch_free(batch);
-
-	if (task_id) {
-		WorkerThreadPool::get_singleton()->wait_for_task_completion(task_id);
+	if (sampling_ctx) {
+		llama_sampling_free(sampling_ctx);
 	}
+}
+
+LlamaContext::~LlamaContext() {
+	llama_batch_free(batch);
 }
