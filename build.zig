@@ -9,8 +9,6 @@ pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{});
     const zig_triple = try target.result.linuxTriple(b.allocator);
 
-    var objs = std.ArrayList(*std.Build.Step.Compile).init(b.allocator);
-
     // godot-cpp
     const lib_godot = b.addStaticLibrary(.{
         .name = "godot-cpp",
@@ -70,127 +68,19 @@ pub fn build(b: *std.Build) !void {
     try cxxflags.appendSlice(flags.items);
 
     const include_paths = [_][]const u8{ "llama.cpp", "llama.cpp/common" };
-    const llama = buildObj(.{
-        .b = b,
-        .name = "llama",
-        .target = target,
-        .optimize = optimize,
-        .sources = &.{"llama.cpp/llama.cpp"},
-        .include_paths = &include_paths,
-        .link_lib_cpp = true,
-        .link_lib_c = false,
-        .flags = cxxflags.items,
-    });
-    const ggml = buildObj(.{
-        .b = b,
-        .name = "ggml",
-        .target = target,
-        .optimize = optimize,
-        .sources = &.{"llama.cpp/ggml.c"},
-        .include_paths = &include_paths,
-        .link_lib_c = true,
-        .link_lib_cpp = false,
-        .flags = cflags.items,
-    });
-    const common = buildObj(.{
-        .b = b,
-        .name = "common",
-        .target = target,
-        .optimize = optimize,
-        .sources = &.{"llama.cpp/common/common.cpp"},
-        .include_paths = &include_paths,
-        .link_lib_cpp = true,
-        .link_lib_c = false,
-        .flags = cxxflags.items,
-    });
-    const console = buildObj(.{
-        .b = b,
-        .name = "console",
-        .target = target,
-        .optimize = optimize,
-        .sources = &.{"llama.cpp/common/console.cpp"},
-        .include_paths = &include_paths,
-        .link_lib_cpp = true,
-        .link_lib_c = false,
-        .flags = cxxflags.items,
-    });
-    const sampling = buildObj(.{
-        .b = b,
-        .name = "sampling",
-        .target = target,
-        .optimize = optimize,
-        .sources = &.{"llama.cpp/common/sampling.cpp"},
-        .include_paths = &include_paths,
-        .link_lib_cpp = true,
-        .link_lib_c = false,
-        .flags = cxxflags.items,
-    });
-    const grammar_parser = buildObj(.{
-        .b = b,
-        .name = "grammar_parser",
-        .target = target,
-        .optimize = optimize,
-        .sources = &.{"llama.cpp/common/grammar-parser.cpp"},
-        .include_paths = &include_paths,
-        .link_lib_cpp = true,
-        .link_lib_c = false,
-        .flags = cxxflags.items,
-    });
-    const build_info = buildObj(.{
-        .b = b,
-        .name = "build_info",
-        .target = target,
-        .optimize = optimize,
-        .sources = &.{"llama.cpp/common/build-info.cpp"},
-        .include_paths = &include_paths,
-        .link_lib_cpp = true,
-        .link_lib_c = false,
-        .flags = cxxflags.items,
-    });
-    const ggml_alloc = buildObj(.{
-        .b = b,
-        .name = "ggml_alloc",
-        .target = target,
-        .optimize = optimize,
-        .sources = &.{"llama.cpp/ggml-alloc.c"},
-        .include_paths = &include_paths,
-        .link_lib_c = true,
-        .link_lib_cpp = false,
-        .flags = cflags.items,
-    });
-    const ggml_backend = buildObj(.{
-        .b = b,
-        .name = "ggml_backend",
-        .target = target,
-        .optimize = optimize,
-        .sources = &.{"llama.cpp/ggml-backend.c"},
-        .include_paths = &include_paths,
-        .link_lib_c = true,
-        .link_lib_cpp = false,
-        .flags = cflags.items,
-    });
-    const ggml_quants = buildObj(.{
-        .b = b,
-        .name = "ggml_quants",
-        .target = target,
-        .optimize = optimize,
-        .sources = &.{"llama.cpp/ggml-quants.c"},
-        .include_paths = &include_paths,
-        .link_lib_c = true,
-        .link_lib_cpp = false,
-        .flags = cflags.items,
-    });
-    const unicode = buildObj(.{
-        .b = b,
-        .name = "unicode",
-        .target = target,
-        .optimize = optimize,
-        .sources = &.{"llama.cpp/unicode.cpp"},
-        .include_paths = &include_paths,
-        .link_lib_c = false,
-        .link_lib_cpp = true,
-        .flags = cxxflags.items,
-    });
+    const llama = buildObj(.{ .b = b, .name = "llama", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/llama.cpp"}, .include_paths = &include_paths, .link_lib_cpp = true, .link_lib_c = false, .flags = cxxflags.items });
+    const ggml = buildObj(.{ .b = b, .name = "ggml", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/ggml.c"}, .include_paths = &include_paths, .link_lib_c = true, .link_lib_cpp = false, .flags = cflags.items });
+    const common = buildObj(.{ .b = b, .name = "common", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/common/common.cpp"}, .include_paths = &include_paths, .link_lib_cpp = true, .link_lib_c = false, .flags = cxxflags.items });
+    const console = buildObj(.{ .b = b, .name = "console", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/common/console.cpp"}, .include_paths = &include_paths, .link_lib_cpp = true, .link_lib_c = false, .flags = cxxflags.items });
+    const sampling = buildObj(.{ .b = b, .name = "sampling", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/common/sampling.cpp"}, .include_paths = &include_paths, .link_lib_cpp = true, .link_lib_c = false, .flags = cxxflags.items });
+    const grammar_parser = buildObj(.{ .b = b, .name = "grammar_parser", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/common/grammar-parser.cpp"}, .include_paths = &include_paths, .link_lib_cpp = true, .link_lib_c = false, .flags = cxxflags.items });
+    const build_info = buildObj(.{ .b = b, .name = "build_info", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/common/build-info.cpp"}, .include_paths = &include_paths, .link_lib_cpp = true, .link_lib_c = false, .flags = cxxflags.items });
+    const ggml_alloc = buildObj(.{ .b = b, .name = "ggml_alloc", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/ggml-alloc.c"}, .include_paths = &include_paths, .link_lib_c = true, .link_lib_cpp = false, .flags = cflags.items });
+    const ggml_backend = buildObj(.{ .b = b, .name = "ggml_backend", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/ggml-backend.c"}, .include_paths = &include_paths, .link_lib_c = true, .link_lib_cpp = false, .flags = cflags.items });
+    const ggml_quants = buildObj(.{ .b = b, .name = "ggml_quants", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/ggml-quants.c"}, .include_paths = &include_paths, .link_lib_c = true, .link_lib_cpp = false, .flags = cflags.items });
+    const unicode = buildObj(.{ .b = b, .name = "unicode", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/unicode.cpp"}, .include_paths = &include_paths, .link_lib_c = false, .link_lib_cpp = true, .flags = cxxflags.items });
+
+    var objs = std.ArrayList(*std.Build.Step.Compile).init(b.allocator);
     try objs.appendSlice(&.{ llama, ggml, common, console, sampling, grammar_parser, build_info, ggml_alloc, ggml_backend, ggml_quants, unicode });
 
     if (target.result.os.tag == .macos) {
@@ -280,11 +170,7 @@ const BuildObjectParams = struct {
 };
 
 fn buildObj(params: BuildObjectParams) *std.Build.Step.Compile {
-    const obj = params.b.addObject(.{
-        .name = params.name,
-        .target = params.target,
-        .optimize = params.optimize,
-    });
+    const obj = params.b.addObject(.{ .name = params.name, .target = params.target, .optimize = params.optimize });
     if (params.target.result.os.tag == .windows) {
         const vk_path = params.b.graph.env_map.get("VK_SDK_PATH") orelse @panic("VK_SDK_PATH not set");
         obj.addIncludePath(.{ .path = params.b.pathJoin(&.{ vk_path, "include" }) });
