@@ -1,6 +1,6 @@
 [configuration]
 
-entry_symbol = "init_library"
+entry_symbol = "init"
 compatibility_minimum = "4.2"
 
 [libraries]

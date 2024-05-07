@@ -1,6 +1,0 @@
-[gd_scene load_steps=2 format=3 uid="uid://bxobxniygk7jm"]
-
-[ext_resource type="LlamaModel" path="res://models/stablelm-2-zephyr-1_6b-Q8_0.gguf" id="1_h1o7k"]
-
-[node name="LlamaContext" type="LlamaContext"]
-model = ExtResource("1_h1o7k")

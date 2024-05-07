@@ -1,7 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const cfiles_exts = [_][]const u8{ ".c", ".cpp", ".cxx", ".c++", ".cc" };
 const extension_name = "godot-llama-cpp";
 
 pub fn build(b: *std.Build) !void {
@@ -9,36 +8,35 @@ pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{});
     const zig_triple = try target.result.linuxTriple(b.allocator);
 
-    // godot-cpp
-    const lib_godot = b.addStaticLibrary(.{
-        .name = "godot-cpp",
+    const godot_zig = b.dependency("godot_zig", .{});
+    const lib_llama_cpp = try build_lib_llama_cpp(.{ .b = b, .target = target, .optimize = optimize });
+
+    const plugin = b.addSharedLibrary(.{
+        .name = b.fmt("{s}-{s}-{s}", .{ extension_name, zig_triple, @tagName(optimize) }),
         .target = target,
         .optimize = optimize,
+        .root_source_file = .{ .path = "src/Plugin.zig" },
     });
-    b.build_root.handle.access("godot_cpp/gen", .{}) catch |e| {
-        switch (e) {
-            error.FileNotFound => {
-                _ = try std.ChildProcess.run(.{
-                    .allocator = b.allocator,
-                    .argv = &.{ "python", "binding_generator.py", "godot_cpp/gdextension/extension_api.json", "godot_cpp" },
-                    .cwd_dir = b.build_root.handle,
-                });
-            },
-            else => {
-                return;
-            },
-        }
-    };
-    lib_godot.linkLibCpp();
-    lib_godot.addIncludePath(.{ .path = "godot_cpp/gdextension/" });
-    lib_godot.addIncludePath(.{ .path = "godot_cpp/include/" });
-    lib_godot.addIncludePath(.{ .path = "godot_cpp/gen/include" });
-    const lib_godot_sources = try findFilesRecursive(b, "godot_cpp/src", &cfiles_exts);
-    const lib_godot_gen_sources = try findFilesRecursive(b, "godot_cpp/gen/src", &cfiles_exts);
-    lib_godot.addCSourceFiles(.{ .files = lib_godot_gen_sources, .flags = &.{ "-std=c++17", "-fno-exceptions" } });
-    lib_godot.addCSourceFiles(.{ .files = lib_godot_sources, .flags = &.{ "-std=c++17", "-fno-exceptions" } });
+    plugin.root_module.addImport("godot", godot_zig.module("godot"));
+    b.lib_dir = "./godot/addons/godot-llama-cpp/lib";
+    plugin.addIncludePath(.{ .path = "llama.cpp" });
+    plugin.linkLibrary(lib_llama_cpp);
 
-    // llama.cpp
+    b.installArtifact(plugin);
+}
+
+const BuildParams = struct {
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+};
+
+fn build_lib_llama_cpp(params: BuildParams) !*std.Build.Step.Compile {
+    const b = params.b;
+    const target = params.target;
+    const optimize = params.optimize;
+    const zig_triple = try target.result.zigTriple(b.allocator);
+
     const commit_hash = try std.ChildProcess.run(.{ .allocator = b.allocator, .argv = &.{ "git", "rev-parse", "HEAD" }, .cwd = b.pathFromRoot("llama.cpp") });
     const zig_version = builtin.zig_version_string;
     try b.build_root.handle.writeFile2(.{ .sub_path = "llama.cpp/common/build-info.cpp", .data = b.fmt(
@@ -49,144 +47,64 @@ pub fn build(b: *std.Build) !void {
         \\
     , .{ 0, commit_hash.stdout[0 .. commit_hash.stdout.len - 1], zig_version, zig_triple }) });
 
-    var flags = std.ArrayList([]const u8).init(b.allocator);
-    if (target.result.abi != .msvc) try flags.append("-D_GNU_SOURCE");
-    if (target.result.os.tag == .macos) try flags.appendSlice(&.{
-        "-D_DARWIN_C_SOURCE",
-        "-DGGML_USE_METAL",
-        "-DGGML_USE_ACCELERATE",
-        "-DACCELERATE_USE_LAPACK",
-        "-DACCELERATE_LAPACK_ILP64",
-    }) else try flags.append("-DGGML_USE_VULKAN");
-    try flags.append("-D_XOPEN_SOURCE=600");
-
-    var cflags = std.ArrayList([]const u8).init(b.allocator);
-    try cflags.append("-std=c11");
-    try cflags.appendSlice(flags.items);
-    var cxxflags = std.ArrayList([]const u8).init(b.allocator);
-    try cxxflags.append("-std=c++11");
-    try cxxflags.appendSlice(flags.items);
-
-    const include_paths = [_][]const u8{ "llama.cpp", "llama.cpp/common" };
-    const llama = buildObj(.{ .b = b, .name = "llama", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/llama.cpp"}, .include_paths = &include_paths, .link_lib_cpp = true, .link_lib_c = false, .flags = cxxflags.items });
-    const ggml = buildObj(.{ .b = b, .name = "ggml", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/ggml.c"}, .include_paths = &include_paths, .link_lib_c = true, .link_lib_cpp = false, .flags = cflags.items });
-    const common = buildObj(.{ .b = b, .name = "common", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/common/common.cpp"}, .include_paths = &include_paths, .link_lib_cpp = true, .link_lib_c = false, .flags = cxxflags.items });
-    const console = buildObj(.{ .b = b, .name = "console", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/common/console.cpp"}, .include_paths = &include_paths, .link_lib_cpp = true, .link_lib_c = false, .flags = cxxflags.items });
-    const sampling = buildObj(.{ .b = b, .name = "sampling", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/common/sampling.cpp"}, .include_paths = &include_paths, .link_lib_cpp = true, .link_lib_c = false, .flags = cxxflags.items });
-    const grammar_parser = buildObj(.{ .b = b, .name = "grammar_parser", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/common/grammar-parser.cpp"}, .include_paths = &include_paths, .link_lib_cpp = true, .link_lib_c = false, .flags = cxxflags.items });
-    const build_info = buildObj(.{ .b = b, .name = "build_info", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/common/build-info.cpp"}, .include_paths = &include_paths, .link_lib_cpp = true, .link_lib_c = false, .flags = cxxflags.items });
-    const ggml_alloc = buildObj(.{ .b = b, .name = "ggml_alloc", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/ggml-alloc.c"}, .include_paths = &include_paths, .link_lib_c = true, .link_lib_cpp = false, .flags = cflags.items });
-    const ggml_backend = buildObj(.{ .b = b, .name = "ggml_backend", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/ggml-backend.c"}, .include_paths = &include_paths, .link_lib_c = true, .link_lib_cpp = false, .flags = cflags.items });
-    const ggml_quants = buildObj(.{ .b = b, .name = "ggml_quants", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/ggml-quants.c"}, .include_paths = &include_paths, .link_lib_c = true, .link_lib_cpp = false, .flags = cflags.items });
-    const unicode = buildObj(.{ .b = b, .name = "unicode", .target = target, .optimize = optimize, .sources = &.{"llama.cpp/unicode.cpp"}, .include_paths = &include_paths, .link_lib_c = false, .link_lib_cpp = true, .flags = cxxflags.items });
-
     var objs = std.ArrayList(*std.Build.Step.Compile).init(b.allocator);
-    try objs.appendSlice(&.{ llama, ggml, common, console, sampling, grammar_parser, build_info, ggml_alloc, ggml_backend, ggml_quants, unicode });
+    var objBuilder = ObjBuilder.init(.{ .b = b, .target = target, .optimize = optimize, .include_paths = &.{
+        "llama.cpp",
+        "llama.cpp/common",
+    } });
 
-    if (target.result.os.tag == .macos) {
-        const ggml_metal = buildObj(.{
-            .b = b,
-            .name = "ggml_metal",
-            .target = target,
-            .optimize = optimize,
-            .sources = &.{"llama.cpp/ggml-metal.m"},
-            .include_paths = &include_paths,
-            .link_lib_c = true,
-            .link_lib_cpp = false,
-            .flags = cflags.items,
-        });
-        const airCommand = b.addSystemCommand(&.{ "xcrun", "-sdk", "macosx", "metal", "-O3", "-c" });
-        airCommand.addFileArg(.{ .path = "llama.cpp/ggml-metal.metal" });
-        airCommand.addArg("-o");
-        const air = airCommand.addOutputFileArg("ggml-metal.air");
+    try objs.appendSlice(&.{
+        objBuilder.build(.{ .name = "ggml", .sources = &.{"llama.cpp/ggml.c"} }),
+        objBuilder.build(.{ .name = "sgemm", .sources = &.{"llama.cpp/sgemm.cpp"} }),
+        objBuilder.build(.{ .name = "ggml_alloc", .sources = &.{"llama.cpp/ggml-alloc.c"} }),
+        objBuilder.build(.{ .name = "ggml_backend", .sources = &.{"llama.cpp/ggml-backend.c"} }),
+        objBuilder.build(.{ .name = "ggml_quants", .sources = &.{"llama.cpp/ggml-quants.c"} }),
+        objBuilder.build(.{ .name = "llama", .sources = &.{"llama.cpp/llama.cpp"} }),
+        objBuilder.build(.{ .name = "unicode", .sources = &.{"llama.cpp/unicode.cpp"} }),
+        objBuilder.build(.{ .name = "unicode_data", .sources = &.{"llama.cpp/unicode-data.cpp"} }),
+        objBuilder.build(.{ .name = "common", .sources = &.{"llama.cpp/common/common.cpp"} }),
+        objBuilder.build(.{ .name = "console", .sources = &.{"llama.cpp/common/console.cpp"} }),
+        objBuilder.build(.{ .name = "sampling", .sources = &.{"llama.cpp/common/sampling.cpp"} }),
+        objBuilder.build(.{ .name = "grammar_parser", .sources = &.{"llama.cpp/common/grammar-parser.cpp"} }),
+        objBuilder.build(.{ .name = "json_schema_to_grammar", .sources = &.{"llama.cpp/common/json-schema-to-grammar.cpp"} }),
+        objBuilder.build(.{ .name = "build_info", .sources = &.{"llama.cpp/common/build-info.cpp"} }),
+    });
 
-        const libCommand = b.addSystemCommand(&.{ "xcrun", "-sdk", "macosx", "metallib" });
-        libCommand.addFileArg(air);
-        libCommand.addArg("-o");
-        const lib = libCommand.addOutputFileArg("default.metallib");
-        const libInstall = b.addInstallLibFile(lib, "default.metallib");
-        b.getInstallStep().dependOn(&libInstall.step);
-        try objs.append(ggml_metal);
-    } else {
-        const ggml_vulkan = buildObj(.{
-            .b = b,
-            .name = "ggml_vulkan",
-            .target = target,
-            .optimize = optimize,
-            .sources = &.{"llama.cpp/ggml-vulkan.cpp"},
-            .include_paths = &include_paths,
-            .link_lib_cpp = true,
-            .link_lib_c = false,
-            .flags = cxxflags.items,
-        });
-        try objs.append(ggml_vulkan);
-    }
+    const lib_llama_cpp = b.addStaticLibrary(.{ .name = "llama.cpp", .target = target, .optimize = optimize });
 
-    const extension = b.addSharedLibrary(.{ .name = b.fmt("{s}-{s}-{s}", .{ extension_name, zig_triple, @tagName(optimize) }), .target = target, .optimize = optimize });
-    const sources = try findFilesRecursive(b, "src", &cfiles_exts);
-    extension.addCSourceFiles(.{ .files = sources, .flags = &.{ "-std=c++17", "-fno-exceptions" } });
-    extension.addIncludePath(.{ .path = "src" });
-    extension.addIncludePath(.{ .path = "godot_cpp/include/" });
-    extension.addIncludePath(.{ .path = "godot_cpp/gdextension/" });
-    extension.addIncludePath(.{ .path = "godot_cpp/gen/include/" });
-    extension.addIncludePath(.{ .path = "llama.cpp" });
-    extension.addIncludePath(.{ .path = "llama.cpp/common" });
     for (objs.items) |obj| {
-        extension.addObject(obj);
+        lib_llama_cpp.addObject(obj);
     }
-    extension.linkLibC();
-    extension.linkLibCpp();
-    if (target.result.os.tag == .macos) {
-        extension.linkFramework("Metal");
-        extension.linkFramework("MetalKit");
-        extension.linkFramework("Foundation");
-        extension.linkFramework("Accelerate");
-        // b.installFile("llama.cpp/ggml-metal.metal", b.pathJoin(&.{ std.fs.path.basename(b.lib_dir), "ggml-metal.metal" }));
-        // b.installFile("llama.cpp/ggml-common.h", b.pathJoin(&.{ std.fs.path.basename(b.lib_dir), "ggml-common.h" }));
-    } else {
-        if (target.result.os.tag == .windows) {
-            const vk_path = b.graph.env_map.get("VK_SDK_PATH") orelse @panic("VK_SDK_PATH not set");
-            extension.addLibraryPath(.{ .path = b.pathJoin(&.{ vk_path, "Lib" }) });
-            extension.linkSystemLibrary("vulkan-1");
-        } else {
-            extension.linkSystemLibrary("vulkan");
-        }
-    }
-    extension.linkLibrary(lib_godot);
 
-    b.installArtifact(extension);
+    return lib_llama_cpp;
 }
 
-const BuildObjectParams = struct {
+const ObjBuilder = struct {
     b: *std.Build,
-    name: []const u8,
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
-    sources: []const []const u8,
     include_paths: []const []const u8,
-    link_lib_c: bool,
-    link_lib_cpp: bool,
-    flags: []const []const u8,
-};
 
-fn buildObj(params: BuildObjectParams) *std.Build.Step.Compile {
-    const obj = params.b.addObject(.{ .name = params.name, .target = params.target, .optimize = params.optimize });
-    if (params.target.result.os.tag == .windows) {
-        const vk_path = params.b.graph.env_map.get("VK_SDK_PATH") orelse @panic("VK_SDK_PATH not set");
-        obj.addIncludePath(.{ .path = params.b.pathJoin(&.{ vk_path, "include" }) });
+    fn init(params: struct { b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, include_paths: []const []const u8 }) ObjBuilder {
+        return ObjBuilder{
+            .b = params.b,
+            .target = params.target,
+            .optimize = params.optimize,
+            .include_paths = params.include_paths,
+        };
     }
-    for (params.include_paths) |path| {
-        obj.addIncludePath(.{ .path = path });
-    }
-    if (params.link_lib_c) {
+
+    fn build(self: *ObjBuilder, params: struct { name: []const u8, sources: []const []const u8 }) *std.Build.Step.Compile {
+        const obj = self.b.addObject(.{ .name = params.name, .target = self.target, .optimize = self.optimize });
+        obj.addCSourceFiles(.{ .files = params.sources });
+        for (self.include_paths) |path| {
+            obj.addIncludePath(.{ .path = path });
+        }
         obj.linkLibC();
-    }
-    if (params.link_lib_cpp) {
         obj.linkLibCpp();
+        return obj;
     }
-    obj.addCSourceFiles(.{ .files = params.sources, .flags = params.flags });
-    return obj;
-}
+};
 
 fn findFilesRecursive(b: *std.Build, dir_name: []const u8, exts: []const []const u8) ![][]const u8 {
     var sources = std.ArrayList([]const u8).init(b.allocator);

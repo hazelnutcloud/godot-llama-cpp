@@ -1,3 +1,0 @@
-- [x] Configure build.zig to save library file name using triple target and optimize mode
-- [ ] Implement LlamaModel resource class
-- [ ] Implement Llama node class

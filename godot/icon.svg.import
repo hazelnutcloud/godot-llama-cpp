@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dj5a0534qsenh"
-path="res://.godot/imported/godot-llama-cpp-1024x1024.svg-0f412fe282a705cdf65256e51c97ddd2.ctex"
+uid="uid://ke5jfk17ld65"
+path="res://.godot/imported/icon.svg-218a8f2b3041327d8a5756f3a245f83b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://addons/godot-llama-cpp/assets/godot-llama-cpp-1024x1024.svg"
-dest_files=["res://.godot/imported/godot-llama-cpp-1024x1024.svg-0f412fe282a705cdf65256e51c97ddd2.ctex"]
+source_file="res://icon.svg"
+dest_files=["res://.godot/imported/icon.svg-218a8f2b3041327d8a5756f3a245f83b.ctex"]
 
 [params]
 

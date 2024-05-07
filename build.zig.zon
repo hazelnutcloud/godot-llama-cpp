@@ -1,0 +1,13 @@
+.{
+    .name = "godot-llama-cpp",
+    .version = "0.0.1",
+    .minimum_zig_version = "0.12.0",
+    .dependencies = .{
+        .godot_zig = .{
+            .path = "godot-zig",
+        },
+    },
+    .paths = .{
+        "",
+    },
+}
