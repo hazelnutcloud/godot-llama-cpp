@@ -1,8 +1,10 @@
-[gd_scene load_steps=2 format=3 uid="uid://bwwqctcmwkn42"]
+[gd_scene load_steps=3 format=3 uid="uid://bwwqctcmwkn42"]
 
-[ext_resource type="Theme" uid="uid://cgxguq0g6p272" path="res://themes/dark.tres" id="1_qfhh8"]
+[ext_resource type="Script" path="res://examples/simple/simple.gd" id="1_o4fd5"]
+[ext_resource type="Theme" uid="uid://cgxguq0g6p272" path="res://themes/dark.tres" id="2_1fm0y"]
 
 [node name="Node" type="Node"]
+script = ExtResource("1_o4fd5")
 
 [node name="Panel" type="Panel" parent="."]
 anchors_preset = 15
@@ -10,7 +12,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme = ExtResource("1_qfhh8")
+theme = ExtResource("2_1fm0y")
 
 [node name="MarginContainer" type="MarginContainer" parent="Panel"]
 layout_mode = 1

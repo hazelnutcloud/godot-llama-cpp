@@ -6,6 +6,7 @@ const GPA = std.heap.GeneralPurposeAllocator(.{});
 
 const LlamaModelLoader = @import("LlamaModelLoader.zig");
 const LlamaModel = @import("LlamaModel.zig");
+const LlamaContext = @import("LlamaContext.zig");
 
 var llamaModelLoader: ?*LlamaModelLoader = null;
 
@@ -18,6 +19,7 @@ fn initializeLevel(_: ?*anyopaque, p_level: GDE.GDExtensionInitializationLevel) 
     Godot.ResourceLoader.getSingleton().add_resource_format_loader(llamaModelLoader, false);
 
     Godot.registerClass(LlamaModel);
+    Godot.registerClass(LlamaContext);
 }
 
 fn deinitializeLevel(userdata: ?*anyopaque, p_level: GDE.GDExtensionInitializationLevel) callconv(.C) void {
