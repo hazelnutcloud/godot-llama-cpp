@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3 uid="uid://bwwqctcmwkn42"]
+[gd_scene load_steps=4 format=3 uid="uid://bwwqctcmwkn42"]
 
 [ext_resource type="Script" path="res://examples/simple/simple.gd" id="1_o4fd5"]
 [ext_resource type="Theme" uid="uid://cgxguq0g6p272" path="res://themes/dark.tres" id="2_1fm0y"]
+[ext_resource type="LlamaModel" path="res://models/Phi-3-mini-128k-instruct.Q5_K_M.gguf" id="3_1351m"]
 
 [node name="Node" type="Node"]
 script = ExtResource("1_o4fd5")
@@ -43,3 +44,6 @@ scroll_active = false
 [node name="TextEdit" type="TextEdit" parent="Panel/MarginContainer/VBoxContainer"]
 custom_minimum_size = Vector2(2.08165e-12, 80)
 layout_mode = 2
+
+[node name="LlamaContext" type="LlamaContext" parent="."]
+model = ExtResource("3_1351m")

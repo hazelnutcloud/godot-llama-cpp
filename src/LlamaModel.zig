@@ -10,9 +10,10 @@ godot_object: *Godot.Resource,
 
 model: ?*c.struct_llama_model = null,
 
-pub fn load_model(self: *Self, path: *Godot.String) void {
-    const abs_path = Godot.ProjectSettings.getSingleton().globalize_path(@ptrCast(&path.value));
+pub fn load_model(self: *Self, path: Godot.String) void {
+    var buf: [256:0]u8 = undefined;
+    const abs_path = Godot.ProjectSettings.getSingleton().globalize_path(@ptrCast(Godot.stringToAscii(path, &buf)));
 
-    var buf: [256]u8 = undefined;
-    self.model = c.llama_load_model_from_file(@ptrCast((Godot.stringToAscii(abs_path, &buf))), c.llama_model_default_params());
+    var buf2: [1024:0]u8 = undefined;
+    self.model = c.llama_load_model_from_file(Godot.stringToAscii(abs_path, &buf2), c.llama_model_default_params());
 }
