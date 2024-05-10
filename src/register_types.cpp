@@ -7,7 +7,6 @@
 #include "llama_model.h"
 #include "llama_model_loader.h"
 #include "llama_context.h"
-#include "llama_backend.h"
 
 using namespace godot;
 
@@ -24,7 +23,6 @@ void initialize_types(ModuleInitializationLevel p_level)
 
 	ClassDB::register_class<LlamaModel>();
   ClassDB::register_class<LlamaContext>();
-  ClassDB::register_class<LlamaBackend>();
 }
 
 void uninitialize_types(ModuleInitializationLevel p_level) {

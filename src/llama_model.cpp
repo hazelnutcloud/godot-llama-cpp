@@ -1,5 +1,6 @@
 #include "llama_model.h"
 #include "llama.h"
+#include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -22,14 +23,16 @@ void LlamaModel::load_model(const String &path) {
 		llama_free_model(model);
 	}
 
-	model = llama_load_model_from_file(path.utf8().get_data(), model_params);
+	String absPath = ProjectSettings::get_singleton()->globalize_path(path);
+
+	model = llama_load_model_from_file(absPath.utf8().get_data(), model_params);
 
 	if (model == NULL) {
-		UtilityFunctions::printerr(vformat("%s: Unable to load model from %s", __func__, path));
+		UtilityFunctions::printerr(vformat("%s: Unable to load model from %s", __func__, absPath));
 		return;
 	}
 
-	UtilityFunctions::print(vformat("%s: Model loaded from %s", __func__, path));
+	UtilityFunctions::print(vformat("%s: Model loaded from %s", __func__, absPath));
 }
 
 int LlamaModel::get_n_gpu_layers() {

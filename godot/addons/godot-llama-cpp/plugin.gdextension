@@ -6,7 +6,7 @@ compatibility_minimum = "4.2"
 [libraries]
 
 macos.debug = "res://addons/godot-llama-cpp/lib/libgodot-llama-cpp-aarch64-macos-none-Debug.dylib"
-macos.release = "res://addons/godot-llama-cpp/lib/libgodot-llama-cpp-aarch64-macos-none-ReleaseFast.dylib"
+macos.release = "res://addons/godot-llama-cpp/lib/libgodot-llama-cpp-aarch64-macos-none-ReleaseSafe.dylib"
 windows.debug.x86_32 = "res://addons/godot-llama-cpp/lib/libgodot-llama-cpp.windows.template_debug.x86_32.dll"
 windows.release.x86_32 = "res://addons/godot-llama-cpp/lib/libgodot-llama-cpp.windows.template_release.x86_32.dll"
 windows.debug.x86_64 = "res://addons/godot-llama-cpp/lib/godot-llama-cpp-x86_64-windows-gnu-Debug.dll"

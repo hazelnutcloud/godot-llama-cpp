@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://t862t0v8ht2q"]
+
+[node name="RichTextLabel" type="RichTextLabel"]
+offset_right = 40.0
+offset_bottom = 40.0
+size_flags_horizontal = 3
+focus_mode = 2
+fit_content = true
+scroll_active = false
+selection_enabled = true

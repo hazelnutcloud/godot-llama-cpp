@@ -2,7 +2,6 @@
 #include "llama_model.h"
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/classes/file_access.hpp>
-#include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/classes/engine.hpp>
 
 using namespace godot;
@@ -24,9 +23,7 @@ Variant godot::LlamaModelLoader::_load(const String &path, const String &origina
     return { model };
   }
 
-	String absPath = ProjectSettings::get_singleton()->globalize_path(path);
-
-	model->load_model(absPath);
+	model->load_model(path);
 	
 	return { model };
 }

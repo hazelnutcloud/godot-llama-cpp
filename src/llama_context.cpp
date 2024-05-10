@@ -7,6 +7,7 @@
 #include <godot_cpp/classes/worker_thread_pool.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 
 using namespace godot;
 
@@ -15,31 +16,21 @@ void LlamaContext::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_model"), &LlamaContext::get_model);
 	ClassDB::add_property("LlamaContext", PropertyInfo(Variant::OBJECT, "model", PROPERTY_HINT_RESOURCE_TYPE, "LlamaModel"), "set_model", "get_model");
 
-  ClassDB::bind_method(D_METHOD("get_seed"), &LlamaContext::get_seed);
-  ClassDB::bind_method(D_METHOD("set_seed", "seed"), &LlamaContext::set_seed);
-  ClassDB::add_property("LlamaContext", PropertyInfo(Variant::INT, "seed"), "set_seed", "get_seed");
+	ClassDB::bind_method(D_METHOD("get_seed"), &LlamaContext::get_seed);
+	ClassDB::bind_method(D_METHOD("set_seed", "seed"), &LlamaContext::set_seed);
+	ClassDB::add_property("LlamaContext", PropertyInfo(Variant::INT, "seed"), "set_seed", "get_seed");
 
-  ClassDB::bind_method(D_METHOD("get_n_ctx"), &LlamaContext::get_n_ctx);
-  ClassDB::bind_method(D_METHOD("set_n_ctx", "n_ctx"), &LlamaContext::set_n_ctx);
-  ClassDB::add_property("LlamaContext", PropertyInfo(Variant::INT, "n_ctx"), "set_n_ctx", "get_n_ctx");
-
-  ClassDB::bind_method(D_METHOD("get_n_threads"), &LlamaContext::get_n_threads);
-  ClassDB::bind_method(D_METHOD("set_n_threads", "n_threads"), &LlamaContext::set_n_threads);
-  ClassDB::add_property("LlamaContext", PropertyInfo(Variant::INT, "n_threads"), "set_n_threads", "get_n_threads");
-
-  ClassDB::bind_method(D_METHOD("get_n_threads_batch"), &LlamaContext::get_n_threads_batch);
-  ClassDB::bind_method(D_METHOD("set_n_threads_batch", "n_threads_batch"), &LlamaContext::set_n_threads_batch);
-  ClassDB::add_property("LlamaContext", PropertyInfo(Variant::INT, "n_threads_batch"), "set_n_threads_batch", "get_n_threads_batch");
+	ClassDB::bind_method(D_METHOD("get_n_ctx"), &LlamaContext::get_n_ctx);
+	ClassDB::bind_method(D_METHOD("set_n_ctx", "n_ctx"), &LlamaContext::set_n_ctx);
+	ClassDB::add_property("LlamaContext", PropertyInfo(Variant::INT, "n_ctx"), "set_n_ctx", "get_n_ctx");
 
 	ClassDB::bind_method(D_METHOD("request_completion", "prompt"), &LlamaContext::request_completion);
-	ClassDB::bind_method(D_METHOD("_fulfill_completion", "prompt"), &LlamaContext::_fulfill_completion);
+	ClassDB::bind_method(D_METHOD("__thread_loop"), &LlamaContext::__thread_loop);
 
-	ADD_SIGNAL(MethodInfo("completion_generated", PropertyInfo(Variant::STRING, "completion"), PropertyInfo(Variant::BOOL, "is_final")));
+	ADD_SIGNAL(MethodInfo("completion_generated", PropertyInfo(Variant::DICTIONARY, "chunk")));
 }
 
 LlamaContext::LlamaContext() {
-	batch = llama_batch_init(4096, 0, 1);
-
 	ctx_params = llama_context_default_params();
 	ctx_params.seed = -1;
 	ctx_params.n_ctx = 4096;
@@ -60,107 +51,66 @@ void LlamaContext::_ready() {
 		return;
 	}
 
+	mutex.instantiate();
+	semaphore.instantiate();
+	thread.instantiate();
+
+	llama_backend_init();
+	llama_numa_init(ggml_numa_strategy::GGML_NUMA_STRATEGY_DISABLED);
+
 	ctx = llama_new_context_with_model(model->model, ctx_params);
 	if (ctx == NULL) {
 		UtilityFunctions::printerr(vformat("%s: Failed to initialize llama context, null ctx", __func__));
 		return;
 	}
 	UtilityFunctions::print(vformat("%s: Context initialized", __func__));
+
+	thread->start(callable_mp(this, &LlamaContext::__thread_loop));
+}
+
+void LlamaContext::__thread_loop() {
+	while (true) {
+		semaphore->wait();
+
+		mutex->lock();
+		if (completion_requests.size() == 0) {
+			mutex->unlock();
+			continue;
+		}
+		completion_request req = completion_requests.get(0);
+		completion_requests.remove_at(0);
+		mutex->unlock();
+
+		UtilityFunctions::print(vformat("%s: Running completion for prompt id: %d", __func__, req.id));
+
+    Dictionary chunk;
+    chunk["id"] = req.id;
+    chunk["text"] = "Hello, world!";
+    call_deferred("emit_signal", "completion_generated", chunk);
+	}
 }
 
 PackedStringArray LlamaContext::_get_configuration_warnings() const {
-  PackedStringArray warnings;
-  if (model == NULL) {
-    warnings.push_back("Model resource property not defined");
-  }
-  return warnings;
+	PackedStringArray warnings;
+	if (model == NULL) {
+		warnings.push_back("Model resource property not defined");
+	}
+	return warnings;
 }
 
-Variant LlamaContext::request_completion(const String &prompt) {
-	UtilityFunctions::print(vformat("%s: Requesting completion for prompt: %s", __func__, prompt));
-	if (task_id) {
-		WorkerThreadPool::get_singleton()->wait_for_task_completion(task_id);
-	}
-	task_id = WorkerThreadPool::get_singleton()->add_task(Callable(this, "_fulfill_completion").bind(prompt));
-	return OK;
-}
+int LlamaContext::request_completion(const String &prompt) {
+	int id = request_id++;
 
-void LlamaContext::_fulfill_completion(const String &prompt) {
-	UtilityFunctions::print(vformat("%s: Fulfilling completion for prompt: %s", __func__, prompt));
-	std::vector<llama_token> tokens_list;
-	tokens_list = ::llama_tokenize(ctx, std::string(prompt.utf8().get_data()), true);
+	UtilityFunctions::print(vformat("%s: Requesting completion for prompt id: %d", __func__, id));
 
-	const int n_len = 128;
-	const int n_ctx = llama_n_ctx(ctx);
-	const int n_kv_req = tokens_list.size() + (n_len - tokens_list.size());
-	if (n_kv_req > n_ctx) {
-		UtilityFunctions::printerr(vformat("%s: n_kv_req > n_ctx, the required KV cache size is not big enough\neither reduce n_len or increase n_ctx", __func__));
-		return;
-	}
+	mutex->lock();
+	completion_request req = { id, prompt };
+	completion_requests.append(req);
+	mutex->unlock();
 
-	for (size_t i = 0; i < tokens_list.size(); i++) {
-		llama_batch_add(batch, tokens_list[i], i, { 0 }, false);
-	}
+	semaphore->post();
 
-	batch.logits[batch.n_tokens - 1] = true;
-
-	llama_kv_cache_clear(ctx);
-
-	int decode_res = llama_decode(ctx, batch);
-	if (decode_res != 0) {
-		UtilityFunctions::printerr(vformat("%s: Failed to decode prompt with error code: %d", __func__, decode_res));
-		return;
-	}
-
-	int n_cur = batch.n_tokens;
-	int n_decode = 0;
-	llama_model *llama_model = model->model;
-
-	while (n_cur <= n_len) {
-		// sample the next token
-		{
-			auto n_vocab = llama_n_vocab(llama_model);
-			auto *logits = llama_get_logits_ith(ctx, batch.n_tokens - 1);
-
-			std::vector<llama_token_data> candidates;
-			candidates.reserve(n_vocab);
-
-			for (llama_token token_id = 0; token_id < n_vocab; token_id++) {
-				candidates.emplace_back(llama_token_data{ token_id, logits[token_id], 0.0f });
-			}
-
-			llama_token_data_array candidates_p = { candidates.data(), candidates.size(), false };
-
-			// sample the most likely token
-			const llama_token new_token_id = llama_sample_token_greedy(ctx, &candidates_p);
-
-			// is it an end of stream?
-			if (new_token_id == llama_token_eos(llama_model) || n_cur == n_len) {
-				call_thread_safe("emit_signal", "completion_generated", "\n", true);
-
-				break;
-			}
-
-			call_thread_safe("emit_signal", "completion_generated", vformat("%s", llama_token_to_piece(ctx, new_token_id).c_str()), false);
-
-			// prepare the next batch
-			llama_batch_clear(batch);
-
-			// push this new token for next evaluation
-			llama_batch_add(batch, new_token_id, n_cur, { 0 }, true);
-
-			n_decode += 1;
-		}
-
-		n_cur += 1;
-
-		// evaluate the current batch with the transformer model
-		int decode_res = llama_decode(ctx, batch);
-		if (decode_res != 0) {
-			UtilityFunctions::printerr(vformat("%s: Failed to decode batch with error code: %d", __func__, decode_res));
-			break;
-		}
-	}
+	return id;
 }
 
 void LlamaContext::set_model(const Ref<LlamaModel> p_model) {
@@ -184,28 +134,10 @@ void LlamaContext::set_n_ctx(int n_ctx) {
 	ctx_params.n_ctx = n_ctx;
 }
 
-int LlamaContext::get_n_threads() {
-	return ctx_params.n_threads;
-}
-void LlamaContext::set_n_threads(int n_threads) {
-	ctx_params.n_threads = n_threads;
-}
-
-int LlamaContext::get_n_threads_batch() {
-	return ctx_params.n_threads_batch;
-}
-void LlamaContext::set_n_threads_batch(int n_threads_batch) {
-	ctx_params.n_threads_batch = n_threads_batch;
-}
-
 LlamaContext::~LlamaContext() {
 	if (ctx) {
 		llama_free(ctx);
 	}
 
-	llama_batch_free(batch);
-
-	if (task_id) {
-		WorkerThreadPool::get_singleton()->wait_for_task_completion(task_id);
-	}
+	llama_backend_free();
 }
