@@ -3,8 +3,8 @@
 [ext_resource type="LlamaModel" path="res://models/Phi-3-mini-128k-instruct.Q5_K_M.gguf" id="1_ff70a"]
 [ext_resource type="Texture2D" uid="uid://dplw232htshgc" path="res://addons/godot-llama-cpp/assets/godot-llama-cpp-1024x1024.svg" id="1_gjsev"]
 [ext_resource type="Script" path="res://examples/simple/simple.gd" id="1_sruc3"]
+[ext_resource type="PackedScene" uid="uid://t862t0v8ht2q" path="res://examples/simple/message.tscn" id="2_7iip7"]
 [ext_resource type="Script" path="res://examples/simple/TextEdit.gd" id="2_7usqw"]
-[ext_resource type="Script" path="res://examples/simple/form.gd" id="2_p1ih5"]
 
 [node name="Node" type="Node"]
 script = ExtResource("1_sruc3")
@@ -41,20 +41,14 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="RichTextLabel" type="RichTextLabel" parent="Panel/MarginContainer/VBoxContainer/ScrollContainer/MessagesContainer"]
+[node name="RichTextLabel2" parent="Panel/MarginContainer/VBoxContainer/ScrollContainer/MessagesContainer" instance=ExtResource("2_7iip7")]
 layout_mode = 2
-focus_mode = 2
 text = "How can I help you?"
-fit_content = true
-scroll_active = false
-selection_enabled = true
 
 [node name="HBoxContainer" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer"]
 layout_mode = 2
-script = ExtResource("2_p1ih5")
 
 [node name="TextEdit" type="TextEdit" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer"]
-unique_name_in_owner = true
 custom_minimum_size = Vector2(2.08165e-12, 100)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -73,5 +67,5 @@ model = ExtResource("1_ff70a")
 unique_name_in_owner = true
 
 [connection signal="submit" from="Panel/MarginContainer/VBoxContainer/HBoxContainer/TextEdit" to="." method="_on_text_edit_submit"]
-[connection signal="pressed" from="Panel/MarginContainer/VBoxContainer/HBoxContainer/Button" to="Panel/MarginContainer/VBoxContainer/HBoxContainer" method="_on_button_pressed"]
-[connection signal="pressed" from="Panel/MarginContainer/VBoxContainer/HBoxContainer/Button" to="Panel/MarginContainer/VBoxContainer/HBoxContainer/Button" method="_on_pressed"]
+[connection signal="pressed" from="Panel/MarginContainer/VBoxContainer/HBoxContainer/Button" to="Panel/MarginContainer/VBoxContainer/HBoxContainer/TextEdit" method="_on_button_pressed"]
+[connection signal="completion_generated" from="LlamaContext" to="." method="_on_llama_context_completion_generated"]

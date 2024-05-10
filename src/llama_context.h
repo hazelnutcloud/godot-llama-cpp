@@ -2,6 +2,7 @@
 #define LLAMA_CONTEXT_H
 
 #include "llama.h"
+#include "common.h"
 #include "llama_model.h"
 #include <godot_cpp/classes/mutex.hpp>
 #include <godot_cpp/classes/node.hpp>
@@ -21,13 +22,18 @@ class LlamaContext : public Node {
 private:
 	Ref<LlamaModel> model;
 	llama_context *ctx = nullptr;
+  llama_sampling_context *sampling_ctx = nullptr;
 	llama_context_params ctx_params;
+  llama_sampling_params sampling_params;
+  int n_len = 1024;
 	int request_id = 0;
 	Vector<completion_request> completion_requests;
 
 	Ref<Thread> thread;
 	Ref<Semaphore> semaphore;
 	Ref<Mutex> mutex;
+  std::vector<llama_token> context_tokens;
+  bool exit_thread = false;
 
 protected:
 	static void _bind_methods();
@@ -43,11 +49,13 @@ public:
 	void set_seed(int seed);
 	int get_n_ctx();
 	void set_n_ctx(int n_ctx);
+  int get_n_len();
+  void set_n_len(int n_len);
 
 	virtual PackedStringArray _get_configuration_warnings() const override;
 	virtual void _ready() override;
+  virtual void _exit_tree() override;
 	LlamaContext();
-	~LlamaContext();
 };
 } //namespace godot
 

@@ -16,6 +16,7 @@ func handle_input(input: String) -> void:
 	var id = llama_context.request_completion(input)
 	print("request id: ", id)
 	
-	var chunk = await llama_context.completion_generated
-	print('new chunk: ', chunk)
-	
+
+
+func _on_llama_context_completion_generated(chunk: Dictionary) -> void:
+	print("new chunk: ", chunk)
