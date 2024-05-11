@@ -84,14 +84,44 @@ fn build_lib_llama_cpp(params: BuildParams) !*std.Build.Step.Compile {
         \\char const *LLAMA_COMMIT = "{s}";
         \\char const *LLAMA_COMPILER = "Zig {s}";
         \\char const *LLAMA_BUILD_TARGET = "{s}";
-        \\
     , .{ 0, commit_hash.stdout[0 .. commit_hash.stdout.len - 1], zig_version, zig_triple }) });
 
+    const lib_llama_cpp = b.addStaticLibrary(.{ .name = "llama.cpp", .target = target, .optimize = optimize });
+
     var objs = std.ArrayList(*std.Build.Step.Compile).init(b.allocator);
-    var objBuilder = ObjBuilder.init(.{ .b = b, .target = target, .optimize = optimize, .include_paths = &.{
-        "llama.cpp",
-        "llama.cpp/common",
-    } });
+    var objBuilder = ObjBuilder.init(.{
+        .b = b,
+        .target = target,
+        .optimize = optimize,
+        .include_paths = &.{ "llama.cpp", "llama.cpp/common" },
+    });
+
+    switch (target.result.os.tag) {
+        .macos => {
+            try objBuilder.flags.append("-DGGML_USE_METAL");
+            try objs.append(objBuilder.build(.{ .name = "ggml_metal", .sources = &.{"llama.cpp/ggml-metal.m"} }));
+
+            lib_llama_cpp.linkFramework("Foundation");
+            lib_llama_cpp.linkFramework("Metal");
+            lib_llama_cpp.linkFramework("MetalKit");
+
+            const expand_metal = b.addExecutable(.{
+                .name = "expand_metal",
+                .target = target,
+                .root_source_file = .{ .path = "tools/expand_metal.zig" },
+            });
+            var run_expand_metal = b.addRunArtifact(expand_metal);
+            run_expand_metal.addArg("--metal-file");
+            run_expand_metal.addFileArg(.{ .path = "llama.cpp/ggml-metal.metal" });
+            run_expand_metal.addArg("--common-file");
+            run_expand_metal.addFileArg(.{ .path = "llama.cpp/ggml-common.h" });
+            run_expand_metal.addArg("--output-file");
+            const metal_expanded = run_expand_metal.addOutputFileArg("ggml-metal.metal");
+            const install_metal = b.addInstallFileWithDir(metal_expanded, .lib, "ggml-metal.metal");
+            lib_llama_cpp.step.dependOn(&install_metal.step);
+        },
+        else => {},
+    }
 
     try objs.appendSlice(&.{
         objBuilder.build(.{ .name = "ggml", .sources = &.{"llama.cpp/ggml.c"} }),
@@ -110,8 +140,6 @@ fn build_lib_llama_cpp(params: BuildParams) !*std.Build.Step.Compile {
         objBuilder.build(.{ .name = "build_info", .sources = &.{"llama.cpp/common/build-info.cpp"} }),
     });
 
-    const lib_llama_cpp = b.addStaticLibrary(.{ .name = "llama.cpp", .target = target, .optimize = optimize });
-
     for (objs.items) |obj| {
         lib_llama_cpp.addObject(obj);
     }
@@ -124,19 +152,26 @@ const ObjBuilder = struct {
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
     include_paths: []const []const u8,
+    flags: std.ArrayList([]const u8),
 
-    fn init(params: struct { b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, include_paths: []const []const u8 }) ObjBuilder {
+    fn init(params: struct {
+        b: *std.Build,
+        target: std.Build.ResolvedTarget,
+        optimize: std.builtin.OptimizeMode,
+        include_paths: []const []const u8,
+    }) ObjBuilder {
         return ObjBuilder{
             .b = params.b,
             .target = params.target,
             .optimize = params.optimize,
             .include_paths = params.include_paths,
+            .flags = std.ArrayList([]const u8).init(params.b.allocator),
         };
     }
 
     fn build(self: *ObjBuilder, params: struct { name: []const u8, sources: []const []const u8 }) *std.Build.Step.Compile {
         const obj = self.b.addObject(.{ .name = params.name, .target = self.target, .optimize = self.optimize });
-        obj.addCSourceFiles(.{ .files = params.sources });
+        obj.addCSourceFiles(.{ .files = params.sources, .flags = self.flags.items });
         for (self.include_paths) |path| {
             obj.addIncludePath(.{ .path = path });
         }
