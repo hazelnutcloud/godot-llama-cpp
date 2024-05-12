@@ -9,7 +9,16 @@ func _on_text_edit_submit(input: String) -> void:
 	handle_input(input)
 
 func handle_input(input: String) -> void:
-	var completion_id = llama_context.request_completion(input)
+	var messages = [{ "sender": "system", "text": "You are a helpful assistant" }]
+	messages.append_array(messages_container.get_children().filter(func(msg: Message): return msg.include_in_prompt).map(
+		func(msg: Message) -> Dictionary:
+			return { "text": msg.text, "sender": msg.sender }
+	))
+	messages.append({"text": input, "sender": "user"})
+	var prompt = ChatFormatter.apply("phi3", messages)
+	print("prompt: ", prompt)
+	
+	var completion_id = llama_context.request_completion(prompt)
 	
 	var user_message: Message = message.instantiate()
 	messages_container.add_child(user_message)
@@ -22,19 +31,20 @@ func handle_input(input: String) -> void:
 	ai_message.sender = "assistant"
 	ai_message.completion_id = completion_id
 	ai_message.pending = true
+	ai_message.grab_focus()
 	
 
 
 func _on_llama_context_completion_generated(chunk: Dictionary) -> void:
 	var completion_id = chunk.id
-	for message: Message in messages_container.get_children():
-		if message.completion_id != completion_id or message.sender != "assistant":
+	for msg: Message in messages_container.get_children():
+		if msg.completion_id != completion_id or msg.sender != "assistant":
 			continue
 		if chunk.has("error"):
-			message.errored = true
+			msg.errored = true
 		elif chunk.has("text"):
-			if message.pending:
-				message.pending = false
-				message.set_text(chunk["text"])
+			if msg.pending:
+				msg.pending = false
+				msg.set_text(chunk["text"])
 			else:
-				message.append_text(chunk["text"])
+				msg.append_text(chunk["text"])

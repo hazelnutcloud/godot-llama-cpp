@@ -1,10 +1,10 @@
 [gd_scene load_steps=6 format=3 uid="uid://c55kb4qvg6geq"]
 
-[ext_resource type="LlamaModel" path="res://models/Phi-3-mini-128k-instruct.Q5_K_M.gguf" id="1_ff70a"]
 [ext_resource type="Texture2D" uid="uid://dplw232htshgc" path="res://addons/godot-llama-cpp/assets/godot-llama-cpp-1024x1024.svg" id="1_gjsev"]
 [ext_resource type="Script" path="res://examples/simple/simple.gd" id="1_sruc3"]
 [ext_resource type="PackedScene" uid="uid://t862t0v8ht2q" path="res://examples/simple/message.tscn" id="2_7iip7"]
 [ext_resource type="Script" path="res://examples/simple/TextEdit.gd" id="2_7usqw"]
+[ext_resource type="LlamaModel" path="res://models/Phi-3-mini-128k-instruct.Q5_K_M.gguf" id="5_qpeda"]
 
 [node name="Node" type="Node"]
 script = ExtResource("1_sruc3")
@@ -34,6 +34,7 @@ layout_mode = 2
 [node name="ScrollContainer" type="ScrollContainer" parent="Panel/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+follow_focus = true
 
 [node name="MessagesContainer" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer/ScrollContainer"]
 unique_name_in_owner = true
@@ -44,6 +45,7 @@ theme_override_constants/separation = 30
 
 [node name="RichTextLabel2" parent="Panel/MarginContainer/VBoxContainer/ScrollContainer/MessagesContainer" instance=ExtResource("2_7iip7")]
 layout_mode = 2
+include_in_prompt = false
 
 [node name="Text" parent="Panel/MarginContainer/VBoxContainer/ScrollContainer/MessagesContainer/RichTextLabel2" index="1"]
 text = "How can I help you?"
@@ -66,7 +68,7 @@ icon = ExtResource("1_gjsev")
 expand_icon = true
 
 [node name="LlamaContext" type="LlamaContext" parent="."]
-model = ExtResource("1_ff70a")
+model = ExtResource("5_qpeda")
 unique_name_in_owner = true
 
 [connection signal="submit" from="Panel/MarginContainer/VBoxContainer/HBoxContainer/TextEdit" to="." method="_on_text_edit_submit"]

@@ -96,7 +96,7 @@ void LlamaContext::__thread_loop() {
 		UtilityFunctions::print(vformat("%s: Running completion for prompt id: %d", __func__, req.id));
 
 		std::vector<llama_token> request_tokens;
-		request_tokens = ::llama_tokenize(ctx, req.prompt.utf8().get_data(), true);
+		request_tokens = ::llama_tokenize(ctx, req.prompt.utf8().get_data(), true, true);
 
 		size_t shared_prefix_idx = 0;
 		auto diff = std::mismatch(context_tokens.begin(), context_tokens.end(), request_tokens.begin(), request_tokens.end());
@@ -166,7 +166,7 @@ void LlamaContext::__thread_loop() {
 				return;
 			}
 			llama_token new_token_id = llama_sampling_sample(sampling_ctx, ctx, NULL, batch.n_tokens - 1);
-			llama_sampling_accept(sampling_ctx, ctx, new_token_id, true);
+			llama_sampling_accept(sampling_ctx, ctx, new_token_id, false);
 
 			Dictionary response;
 			response["id"] = req.id;
