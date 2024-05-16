@@ -51,6 +51,14 @@ public:
 	void set_n_ctx(int n_ctx);
   int get_n_len();
   void set_n_len(int n_len);
+  float get_temperature();
+  void set_temperature(float temperature);
+  float get_top_p();
+  void set_top_p(float top_p);
+  float get_frequency_penalty();
+  void set_frequency_penalty(float frequency_penalty);
+  float get_presence_penalty();
+  void set_presence_penalty(float presence_penalty);
 
 	virtual PackedStringArray _get_configuration_warnings() const override;
 	virtual void _ready() override;

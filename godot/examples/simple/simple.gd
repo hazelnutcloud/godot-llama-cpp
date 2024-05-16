@@ -9,13 +9,16 @@ func _on_text_edit_submit(input: String) -> void:
 	handle_input(input)
 
 func handle_input(input: String) -> void:
-	var messages = [{ "sender": "system", "text": "You are a helpful assistant" }]
+	#var messages = [{ "sender": "system", "text": "You are a pirate chatbot who always responds in pirate speak!" }]
+	
+	#var messages = [{ "sender": "system", "text": "You are a helpful chatbot assistant!" }]
+	var messages = []
 	messages.append_array(messages_container.get_children().filter(func(msg: Message): return msg.include_in_prompt).map(
 		func(msg: Message) -> Dictionary:
 			return { "text": msg.text, "sender": msg.sender }
 	))
 	messages.append({"text": input, "sender": "user"})
-	var prompt = ChatFormatter.apply("phi3", messages)
+	var prompt = ChatFormatter.apply("llama3", messages)
 	print("prompt: ", prompt)
 	
 	var completion_id = llama_context.request_completion(prompt)

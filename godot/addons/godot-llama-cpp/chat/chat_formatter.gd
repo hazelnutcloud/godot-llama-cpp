@@ -6,12 +6,14 @@ static func apply(format: String, messages: Array) -> String:
 			return format_llama3(messages)
 		"phi3":
 			return format_phi3(messages)
+		"mistral":
+			return format_mistral(messages)
 		_:
 			printerr("Unknown chat format: ", format)
 			return ""
 
 static func format_llama3(messages: Array) -> String:
-	var res = "<|begin_of_text|>"
+	var res = ""
 	
 	for i in range(messages.size()):
 		match messages[i]:
@@ -27,7 +29,7 @@ static func format_llama3(messages: Array) -> String:
 	return res
 
 static func format_phi3(messages: Array) -> String:
-	var res = "<s>"
+	var res = ""
 	
 	for i in range(messages.size()):
 		match messages[i]:
@@ -36,4 +38,19 @@ static func format_phi3(messages: Array) -> String:
 			_:
 				printerr("Invalid message at index ", i)
 	res += "<|assistant|>\n"
+	return res
+	
+static func format_mistral(messages: Array) -> String:
+	var res = ""
+	
+	for i in range(messages.size()):
+		match messages[i]:
+			{"text": var text, "sender": var sender}:
+				if sender == "user":
+					res += "[INST] %s [/INST]" % text
+				else:
+					res += "%s</s>"
+			_:
+				printerr("Invalid message at index ", i)
+	
 	return res

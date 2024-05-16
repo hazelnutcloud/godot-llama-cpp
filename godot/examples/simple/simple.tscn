@@ -4,7 +4,7 @@
 [ext_resource type="Script" path="res://examples/simple/simple.gd" id="1_sruc3"]
 [ext_resource type="PackedScene" uid="uid://t862t0v8ht2q" path="res://examples/simple/message.tscn" id="2_7iip7"]
 [ext_resource type="Script" path="res://examples/simple/TextEdit.gd" id="2_7usqw"]
-[ext_resource type="LlamaModel" path="res://models/Phi-3-mini-128k-instruct.Q5_K_M.gguf" id="5_qpeda"]
+[ext_resource type="LlamaModel" path="res://models/meta-llama-3-8b-instruct.Q5_K_M.gguf" id="5_qov1l"]
 
 [node name="Node" type="Node"]
 script = ExtResource("1_sruc3")
@@ -68,7 +68,8 @@ icon = ExtResource("1_gjsev")
 expand_icon = true
 
 [node name="LlamaContext" type="LlamaContext" parent="."]
-model = ExtResource("5_qpeda")
+model = ExtResource("5_qov1l")
+temperature = 0.9
 unique_name_in_owner = true
 
 [connection signal="submit" from="Panel/MarginContainer/VBoxContainer/HBoxContainer/TextEdit" to="." method="_on_text_edit_submit"]
