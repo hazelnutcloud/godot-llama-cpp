@@ -1,0 +1,37 @@
+[gd_scene load_steps=5 format=3 uid="uid://t862t0v8ht2q"]
+
+[ext_resource type="Script" path="res://examples/simple/message.gd" id="1_pko33"]
+[ext_resource type="Texture2D" uid="uid://dplw232htshgc" path="res://addons/godot-llama-cpp/assets/godot-llama-cpp-1024x1024.svg" id="2_dvc7y"]
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_t8bgj"]
+texture = ExtResource("2_dvc7y")
+
+[sub_resource type="Theme" id="Theme_bw3pb"]
+Panel/styles/panel = SubResource("StyleBoxTexture_t8bgj")
+
+[node name="RichTextLabel" type="HBoxContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 20
+script = ExtResource("1_pko33")
+sender = "assistant"
+
+[node name="Panel" type="Panel" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 80)
+layout_mode = 2
+size_flags_vertical = 0
+theme = SubResource("Theme_bw3pb")
+
+[node name="Text" type="RichTextLabel" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+text = "..."
+fit_content = true
+selection_enabled = true
