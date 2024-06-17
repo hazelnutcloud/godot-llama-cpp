@@ -49,7 +49,7 @@ compile_commands.json
 .vscode/*
 !.vscode/extensions.json
 
-zig-cache
+.zig-cache
 zig-out
 *.gguf
 

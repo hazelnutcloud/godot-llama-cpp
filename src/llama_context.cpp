@@ -162,8 +162,9 @@ void LlamaContext::__thread_loop() {
 
 			for (size_t j = 0; j < sequence.size(); j++) {
 				llama_batch_add(batch, sequence[j], j + curr_token_pos, { 0 }, false);
-				curr_token_pos++;
 			}
+
+			curr_token_pos += sequence.size();
 
 			if (i == sequences.size() - 1) {
 				batch.logits[batch.n_tokens - 1] = true;
@@ -174,6 +175,10 @@ void LlamaContext::__thread_loop() {
 				break;
 			}
 		}
+
+		printf("Request tokens: %d\n", request_tokens.size());
+		printf("Batch tokens: %d\n", batch.n_tokens);
+		printf("Current token pos: %d\n", curr_token_pos);
 
 		if (decode_failed) {
 			Dictionary response;
@@ -197,7 +202,10 @@ void LlamaContext::__thread_loop() {
 
 			context_tokens.push_back(new_token_id);
 
-			if (llama_token_is_eog(model->model, new_token_id) || curr_token_pos == n_len) {
+			bool eog = llama_token_is_eog(model->model, new_token_id);
+			bool curr_eq_n_len = curr_token_pos == n_len;
+
+			if (eog || curr_eq_n_len) {
 				response["done"] = true;
 				call_thread_safe("emit_signal", "completion_generated", response);
 				break;
@@ -218,6 +226,8 @@ void LlamaContext::__thread_loop() {
 				break;
 			}
 		}
+
+		llama_sampling_reset(sampling_ctx);
 
 		if (decode_failed) {
 			Dictionary response;
@@ -281,31 +291,31 @@ void LlamaContext::set_n_len(int n_len) {
 }
 
 float LlamaContext::get_temperature() {
-  return sampling_params.temp;
+	return sampling_params.temp;
 }
 void LlamaContext::set_temperature(float temperature) {
-  sampling_params.temp = temperature;
+	sampling_params.temp = temperature;
 }
 
 float LlamaContext::get_top_p() {
-  return sampling_params.top_p;
+	return sampling_params.top_p;
 }
 void LlamaContext::set_top_p(float top_p) {
-  sampling_params.top_p = top_p;
+	sampling_params.top_p = top_p;
 }
 
 float LlamaContext::get_frequency_penalty() {
-  return sampling_params.penalty_freq;
+	return sampling_params.penalty_freq;
 }
 void LlamaContext::set_frequency_penalty(float frequency_penalty) {
-  sampling_params.penalty_freq = frequency_penalty;
+	sampling_params.penalty_freq = frequency_penalty;
 }
 
 float LlamaContext::get_presence_penalty() {
-  return sampling_params.penalty_present;
+	return sampling_params.penalty_present;
 }
 void LlamaContext::set_presence_penalty(float presence_penalty) {
-  sampling_params.penalty_present = presence_penalty;
+	sampling_params.penalty_present = presence_penalty;
 }
 
 void LlamaContext::_exit_tree() {

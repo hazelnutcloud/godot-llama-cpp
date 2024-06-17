@@ -9,10 +9,7 @@ func _on_text_edit_submit(input: String) -> void:
 	handle_input(input)
 
 func handle_input(input: String) -> void:
-	#var messages = [{ "sender": "system", "text": "You are a pirate chatbot who always responds in pirate speak!" }]
-	
-	#var messages = [{ "sender": "system", "text": "You are a helpful chatbot assistant!" }]
-	var messages = []
+	var messages = [{ "sender": "system", "text": "You are a pirate chatbot who always responds in pirate speak!" }]
 	messages.append_array(messages_container.get_children().filter(func(msg: Message): return msg.include_in_prompt).map(
 		func(msg: Message) -> Dictionary:
 			return { "text": msg.text, "sender": msg.sender }
@@ -35,8 +32,6 @@ func handle_input(input: String) -> void:
 	ai_message.completion_id = completion_id
 	ai_message.pending = true
 	ai_message.grab_focus()
-	
-
 
 func _on_llama_context_completion_generated(chunk: Dictionary) -> void:
 	var completion_id = chunk.id
