@@ -44,7 +44,7 @@ while (true):
     - [ ] More to come!
   - Compute backend builds:
     - [x] Metal
-    - [x] Vulkan
+    - [ ] Vulkan
     - [ ] CUDA
   - Asynchronous completion generation
   - Support any language model that llama.cpp supports in GGUF format
