@@ -28,6 +28,9 @@ pub fn build(b: *std.Build) !void {
     plugin.linkLibrary(lib_godot_cpp);
 
     b.installArtifact(plugin);
+
+    const check = b.step("check", "Check if plugin compiles");
+    check.dependOn(&plugin.step);
 }
 
 const BuildParams = struct {
@@ -76,29 +79,38 @@ fn build_lib_llama_cpp(params: BuildParams) !*std.Build.Step.Compile {
     const optimize = params.optimize;
     const zig_triple = try target.result.zigTriple(b.allocator);
 
-    const commit_hash = try std.process.Child.run(.{ .allocator = b.allocator, .argv = &.{ "git", "rev-parse", "HEAD" }, .cwd = b.pathFromRoot("llama.cpp") });
-    const zig_version = builtin.zig_version_string;
-    try b.build_root.handle.writeFile(.{ .sub_path = "llama.cpp/common/build-info.cpp", .data = b.fmt(
-        \\int LLAMA_BUILD_NUMBER = {};
-        \\char const *LLAMA_COMMIT = "{s}";
-        \\char const *LLAMA_COMPILER = "Zig {s}";
-        \\char const *LLAMA_BUILD_TARGET = "{s}";
-    , .{ 0, commit_hash.stdout[0 .. commit_hash.stdout.len - 1], zig_version, zig_triple }) });
+    const lib_llama_cpp = b.addStaticLibrary(.{
+        .name = "llama.cpp",
+        .target = target,
+        .optimize = optimize,
+    });
 
-    const lib_llama_cpp = b.addStaticLibrary(.{ .name = "llama.cpp", .target = target, .optimize = optimize });
+    const build_info_run = b.addSystemCommand(&.{
+        "echo",
+        "-e",
+        b.fmt(
+            "int LLAMA_BUILD_NUMBER = {d};\\nchar const *LLAMA_COMMIT = \"$(git rev-parse HEAD)\";\\nchar const *LLAMA_COMPILER = \"Zig {s}\";\\nchar const *LLAMA_BUILD_TARGET = \"{s}\";\\n",
+            .{ 0, builtin.zig_version_string, zig_triple },
+        ),
+    });
+    const build_info_wf = b.addWriteFiles();
+    _ = build_info_wf.addCopyFile(build_info_run.captureStdOut(), "build-info.cpp");
 
-    var objs = std.ArrayList(*std.Build.Step.Compile).init(b.allocator);
     var objBuilder = ObjBuilder.init(.{
         .b = b,
         .target = target,
         .optimize = optimize,
         .include_paths = &.{ "llama.cpp", "llama.cpp/common" },
     });
+    try objBuilder.c_flags.append("-std=c11");
+    try objBuilder.cpp_flags.append("-std=c++11");
+
+    var objs = std.ArrayList(*std.Build.Step.Compile).init(b.allocator);
 
     switch (target.result.os.tag) {
         .macos => {
-            try objBuilder.flags.append("-DGGML_USE_METAL");
-            try objs.append(objBuilder.build(.{ .name = "ggml_metal", .sources = &.{"llama.cpp/ggml-metal.m"} }));
+            try objBuilder.base_flags.append("-DGGML_USE_METAL");
+            try objs.append(try objBuilder.build(.{ .name = "ggml_metal", .source = "llama.cpp/ggml-metal.m" }));
 
             lib_llama_cpp.linkFramework("Foundation");
             lib_llama_cpp.linkFramework("Metal");
@@ -119,24 +131,34 @@ fn build_lib_llama_cpp(params: BuildParams) !*std.Build.Step.Compile {
             const install_metal = b.addInstallFileWithDir(metal_expanded, .lib, "ggml-metal.metal");
             lib_llama_cpp.step.dependOn(&install_metal.step);
         },
+        .linux => {
+            try objBuilder.base_flags.append("-D_GNU_SOURCE");
+        },
         else => {},
     }
 
+    const build_info_compile = try objBuilder.build(.{
+        .name = "build_info",
+        .source = "build-info.cpp",
+        .root = build_info_wf.getDirectory(),
+    });
+    build_info_compile.step.dependOn(&build_info_wf.step);
+
     try objs.appendSlice(&.{
-        objBuilder.build(.{ .name = "ggml", .sources = &.{"llama.cpp/ggml.c"} }),
-        objBuilder.build(.{ .name = "sgemm", .sources = &.{"llama.cpp/sgemm.cpp"} }),
-        objBuilder.build(.{ .name = "ggml_alloc", .sources = &.{"llama.cpp/ggml-alloc.c"} }),
-        objBuilder.build(.{ .name = "ggml_backend", .sources = &.{"llama.cpp/ggml-backend.c"} }),
-        objBuilder.build(.{ .name = "ggml_quants", .sources = &.{"llama.cpp/ggml-quants.c"} }),
-        objBuilder.build(.{ .name = "llama", .sources = &.{"llama.cpp/llama.cpp"} }),
-        objBuilder.build(.{ .name = "unicode", .sources = &.{"llama.cpp/unicode.cpp"} }),
-        objBuilder.build(.{ .name = "unicode_data", .sources = &.{"llama.cpp/unicode-data.cpp"} }),
-        objBuilder.build(.{ .name = "common", .sources = &.{"llama.cpp/common/common.cpp"} }),
-        objBuilder.build(.{ .name = "console", .sources = &.{"llama.cpp/common/console.cpp"} }),
-        objBuilder.build(.{ .name = "sampling", .sources = &.{"llama.cpp/common/sampling.cpp"} }),
-        objBuilder.build(.{ .name = "grammar_parser", .sources = &.{"llama.cpp/common/grammar-parser.cpp"} }),
-        objBuilder.build(.{ .name = "json_schema_to_grammar", .sources = &.{"llama.cpp/common/json-schema-to-grammar.cpp"} }),
-        objBuilder.build(.{ .name = "build_info", .sources = &.{"llama.cpp/common/build-info.cpp"} }),
+        try objBuilder.build(.{ .name = "ggml", .source = "llama.cpp/ggml.c" }),
+        try objBuilder.build(.{ .name = "sgemm", .source = "llama.cpp/sgemm.cpp" }),
+        try objBuilder.build(.{ .name = "ggml_alloc", .source = "llama.cpp/ggml-alloc.c" }),
+        try objBuilder.build(.{ .name = "ggml_backend", .source = "llama.cpp/ggml-backend.c" }),
+        try objBuilder.build(.{ .name = "ggml_quants", .source = "llama.cpp/ggml-quants.c" }),
+        try objBuilder.build(.{ .name = "llama", .source = "llama.cpp/llama.cpp" }),
+        try objBuilder.build(.{ .name = "unicode", .source = "llama.cpp/unicode.cpp" }),
+        try objBuilder.build(.{ .name = "unicode_data", .source = "llama.cpp/unicode-data.cpp" }),
+        try objBuilder.build(.{ .name = "common", .source = "llama.cpp/common/common.cpp" }),
+        try objBuilder.build(.{ .name = "console", .source = "llama.cpp/common/console.cpp" }),
+        try objBuilder.build(.{ .name = "sampling", .source = "llama.cpp/common/sampling.cpp" }),
+        try objBuilder.build(.{ .name = "grammar_parser", .source = "llama.cpp/common/grammar-parser.cpp" }),
+        try objBuilder.build(.{ .name = "json_schema_to_grammar", .source = "llama.cpp/common/json-schema-to-grammar.cpp" }),
+        build_info_compile,
     });
 
     for (objs.items) |obj| {
@@ -151,7 +173,9 @@ const ObjBuilder = struct {
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
     include_paths: []const []const u8,
-    flags: std.ArrayList([]const u8),
+    c_flags: std.ArrayList([]const u8),
+    cpp_flags: std.ArrayList([]const u8),
+    base_flags: std.ArrayList([]const u8),
 
     fn init(params: struct {
         b: *std.Build,
@@ -164,18 +188,57 @@ const ObjBuilder = struct {
             .target = params.target,
             .optimize = params.optimize,
             .include_paths = params.include_paths,
-            .flags = std.ArrayList([]const u8).init(params.b.allocator),
+            .c_flags = std.ArrayList([]const u8).init(params.b.allocator),
+            .cpp_flags = std.ArrayList([]const u8).init(params.b.allocator),
+            .base_flags = std.ArrayList([]const u8).init(params.b.allocator),
         };
     }
 
-    fn build(self: *ObjBuilder, params: struct { name: []const u8, sources: []const []const u8 }) *std.Build.Step.Compile {
-        const obj = self.b.addObject(.{ .name = params.name, .target = self.target, .optimize = self.optimize });
-        obj.addCSourceFiles(.{ .files = params.sources, .flags = self.flags.items });
+    fn build(
+        self: *ObjBuilder,
+        params: struct {
+            name: []const u8,
+            source: []const u8,
+            root: ?std.Build.LazyPath = null,
+        },
+    ) !*std.Build.Step.Compile {
+        const obj = self.b.addObject(.{
+            .name = params.name,
+            .target = self.target,
+            .optimize = self.optimize,
+            .pic = true,
+        });
+
+        const Extension = enum {
+            c,
+            cpp,
+            m,
+        };
+        const extension = std.meta.stringToEnum(
+            Extension,
+            std.mem.trimLeft(u8, std.fs.path.extension(params.source), "."),
+        ) orelse return error.UnknownExtension;
+
+        const flags = switch (extension) {
+            .c, .m => self.c_flags,
+            .cpp => self.cpp_flags,
+        };
+        try self.base_flags.appendSlice(flags.items);
+
+        obj.addCSourceFiles(.{
+            .files = &.{params.source},
+            .flags = self.base_flags.items,
+            .root = params.root,
+        });
         for (self.include_paths) |path| {
             obj.addIncludePath(.{ .src_path = .{ .owner = self.b, .sub_path = path } });
         }
-        obj.linkLibC();
-        obj.linkLibCpp();
+
+        switch (extension) {
+            .c, .m => obj.linkLibC(),
+            .cpp => obj.linkLibCpp(),
+        }
+
         return obj;
     }
 };
