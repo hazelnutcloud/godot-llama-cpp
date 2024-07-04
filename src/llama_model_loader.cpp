@@ -19,11 +19,7 @@ Variant godot::LlamaModelLoader::_load(const String &path, const String &origina
 		return ERR_FILE_NOT_FOUND;
 	}
 
-  if (Engine::get_singleton()->is_editor_hint()) {
-    return { model };
-  }
-
-	model->load_model(path);
+  model->set_path(path);
 	
 	return { model };
 }

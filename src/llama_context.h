@@ -25,7 +25,7 @@ private:
   llama_sampling_context *sampling_ctx = nullptr;
 	llama_context_params ctx_params;
   llama_sampling_params sampling_params;
-  int n_len = 1024;
+  int32_t n_len = 1024;
 	int request_id = 0;
 	Vector<completion_request> completion_requests;
 
@@ -45,12 +45,12 @@ public:
 	int request_completion(const String &prompt);
 	void __thread_loop();
 
-	int get_seed();
-	void set_seed(int seed);
-	int get_n_ctx();
-	void set_n_ctx(int n_ctx);
-  int get_n_len();
-  void set_n_len(int n_len);
+	uint32_t get_seed();
+	void set_seed(uint32_t seed);
+	uint32_t get_n_ctx();
+	void set_n_ctx(uint32_t n_ctx);
+  int32_t get_n_len();
+  void set_n_len(int32_t n_len);
   float get_temperature();
   void set_temperature(float temperature);
   float get_top_p();

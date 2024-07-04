@@ -34,6 +34,10 @@ pub fn build(b: *std.Build) !void {
         "The compute backend to use.",
     ) orelse ComputeBackend.cpu;
 
+    const gen_run = b.addSystemCommand(&.{ "python", "binding_generator.py" });
+    gen_run.addFileArg(b.path("godot_cpp/gdextension/extension_api.json"));
+    const gen_out = gen_run.addOutputDirectoryArg("godot-cpp-gen");
+
     // godot-llama-cpp
     const plugin = b.addSharedLibrary(.{
         .name = b.fmt("{s}-{s}-{s}", .{ extension_name, triple, @tagName(optimize) }),
@@ -42,14 +46,16 @@ pub fn build(b: *std.Build) !void {
     });
     b.installArtifact(plugin);
 
-    plugin.addCSourceFiles(.{ .files = try findFilesRecursive(b, "src/", &cfiles_exts) });
-    plugin.addIncludePath(.{ .src_path = .{ .owner = b, .sub_path = "src/" } });
-    plugin.addIncludePath(.{ .src_path = .{ .owner = b, .sub_path = "godot_cpp/gdextension/" } });
-    plugin.addIncludePath(.{ .src_path = .{ .owner = b, .sub_path = "godot_cpp/include/" } });
-    plugin.addIncludePath(.{ .src_path = .{ .owner = b, .sub_path = "godot_cpp/gen/include" } });
-    plugin.addIncludePath(.{ .src_path = .{ .owner = b, .sub_path = "llama.cpp/include" } });
-    plugin.addIncludePath(.{ .src_path = .{ .owner = b, .sub_path = "llama.cpp/common" } });
-    plugin.addIncludePath(.{ .src_path = .{ .owner = b, .sub_path = "llama.cpp/ggml/include" } });
+    plugin.addCSourceFiles(.{ .files = try findFilesRecursive(b, "src", &cfiles_exts) });
+    plugin.addIncludePath(b.path("src"));
+    plugin.addIncludePath(b.path("godot_cpp/gdextension"));
+    plugin.addIncludePath(b.path("godot_cpp/include"));
+    plugin.addIncludePath(gen_out.path(b, "gen/include"));
+    plugin.addIncludePath(b.path("llama.cpp/src"));
+    plugin.addIncludePath(b.path("llama.cpp/include"));
+    plugin.addIncludePath(b.path("llama.cpp/common"));
+    plugin.addIncludePath(b.path("llama.cpp/ggml/include"));
+    plugin.addIncludePath(b.path("llama.cpp/ggml/src"));
 
     // godot-cpp
     const lib_godot = b.addStaticLibrary(.{
@@ -58,26 +64,25 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
     plugin.linkLibrary(lib_godot);
-
-    b.build_root.handle.access("godot_cpp/gen", .{}) catch |e| {
-        switch (e) {
-            error.FileNotFound => {
-                _ = try std.process.Child.run(.{
-                    .allocator = b.allocator,
-                    .argv = &.{ "python", "binding_generator.py", "godot_cpp/gdextension/extension_api.json", "godot_cpp" },
-                    .cwd_dir = b.build_root.handle,
-                });
-            },
-            else => {},
-        }
-    };
     lib_godot.linkLibCpp();
-    lib_godot.addIncludePath(.{ .src_path = .{ .owner = b, .sub_path = "godot_cpp/gdextension/" } });
-    lib_godot.addIncludePath(.{ .src_path = .{ .owner = b, .sub_path = "godot_cpp/include/" } });
-    lib_godot.addIncludePath(.{ .src_path = .{ .owner = b, .sub_path = "godot_cpp/gen/include" } });
+    lib_godot.step.dependOn(&gen_run.step);
+
+    lib_godot.addIncludePath(b.path("godot_cpp/gdextension"));
+    lib_godot.addIncludePath(b.path("godot_cpp/include"));
+    lib_godot.addIncludePath(gen_out.path(b, "gen/include"));
+
+    const concat_gen_exe = b.addExecutable(.{
+        .name = "concat_gen",
+        .target = target,
+        .optimize = optimize,
+        .root_source_file = b.path("tools/concat_files.zig"),
+    });
+    var concat_gen_run = b.addRunArtifact(concat_gen_exe);
+    concat_gen_run.addDirectoryArg(gen_out.path(b, "gen/src"));
+    const concat_gen_out = concat_gen_run.addOutputFileArg("gen_concat.cpp");
     const lib_godot_sources = try findFilesRecursive(b, "godot_cpp/src", &cfiles_exts);
-    const lib_godot_gen_sources = try findFilesRecursive(b, "godot_cpp/gen/src", &cfiles_exts);
-    lib_godot.addCSourceFiles(.{ .files = lib_godot_gen_sources, .flags = &.{ "-std=c++17", "-fno-exceptions" } });
+
+    lib_godot.addCSourceFile(.{ .file = concat_gen_out, .flags = &.{ "-std=c++17", "-fno-exceptions" } });
     lib_godot.addCSourceFiles(.{ .files = lib_godot_sources, .flags = &.{ "-std=c++17", "-fno-exceptions" } });
 
     // llama.cpp
@@ -91,18 +96,20 @@ pub fn build(b: *std.Build) !void {
     var base_flags = std.ArrayList([]const u8).init(b.allocator);
     var c_flags = std.ArrayList([]const u8).init(b.allocator);
     var cpp_flags = std.ArrayList([]const u8).init(b.allocator);
-    var include_paths = std.ArrayList([]const u8).init(b.allocator);
+    var include_paths = std.ArrayList(std.Build.LazyPath).init(b.allocator);
     var system_libs = std.ArrayList([]const u8).init(b.allocator);
     var library_paths = std.ArrayList(std.Build.LazyPath).init(b.allocator);
 
     var sources = std.ArrayList(Source).init(b.allocator);
 
     try c_flags.append("-std=c11");
-    try cpp_flags.append("-std=c++11");
+    try cpp_flags.append("-std=c++17");
     try include_paths.appendSlice(&.{
-        "llama.cpp/include",
-        "llama.cpp/common",
-        "llama.cpp/ggml/include",
+        b.path("llama.cpp/src"),
+        b.path("llama.cpp/include"),
+        b.path("llama.cpp/common"),
+        b.path("llama.cpp/ggml/include"),
+        b.path("llama.cpp/ggml/src"),
     });
 
     switch (target.result.os.tag) {
@@ -127,13 +134,13 @@ pub fn build(b: *std.Build) !void {
             const expand_metal = b.addExecutable(.{
                 .name = "expand_metal",
                 .target = target,
-                .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "tools/expand_metal.zig" } },
+                .root_source_file = b.path("tools/expand_metal.zig"),
             });
             var run_expand_metal = b.addRunArtifact(expand_metal);
             run_expand_metal.addArg("--metal-file");
-            run_expand_metal.addFileArg(.{ .src_path = .{ .owner = b, .sub_path = "llama.cpp/ggml/src/ggml-metal.metal" } });
+            run_expand_metal.addFileArg(b.path("llama.cpp/ggml/src/ggml-metal.metal"));
             run_expand_metal.addArg("--common-file");
-            run_expand_metal.addFileArg(.{ .src_path = .{ .owner = b, .sub_path = "llama.cpp/ggml/src/ggml-common.h" } });
+            run_expand_metal.addFileArg(b.path("llama.cpp/ggml/src/ggml-common.h"));
             run_expand_metal.addArg("--output-file");
             const metal_expanded = run_expand_metal.addOutputFileArg("ggml-metal.metal");
             const install_metal = b.addInstallFileWithDir(metal_expanded, .lib, "ggml-metal.metal");
@@ -148,7 +155,7 @@ pub fn build(b: *std.Build) !void {
 
             const vk_library_path = b.pathJoin(&.{ vulkan_sdk, "lib" });
             const vk_include_path = b.pathJoin(&.{ vulkan_sdk, "include" });
-            try include_paths.append(vk_include_path);
+            try include_paths.append(std.Build.LazyPath{ .cwd_relative = vk_include_path });
             try library_paths.append(.{ .cwd_relative = vk_library_path });
             try system_libs.append("vulkan");
 
@@ -195,7 +202,6 @@ pub fn build(b: *std.Build) !void {
             .name = source.name,
             .target = target,
             .optimize = optimize,
-            .pic = true,
         });
         lib_llama_cpp.addObject(obj);
         if (source.dependencies) |deps| {
@@ -206,12 +212,7 @@ pub fn build(b: *std.Build) !void {
         const file = if (source.root) |root|
             root.path(b, source.source_file)
         else
-            std.Build.LazyPath{
-                .src_path = .{
-                    .owner = b,
-                    .sub_path = source.source_file,
-                },
-            };
+            b.path(source.source_file);
         const extension = std.meta.stringToEnum(
             Extension,
             std.fs.path.extension(source.source_file),
@@ -225,9 +226,7 @@ pub fn build(b: *std.Build) !void {
             .flags = flags,
         });
         for (include_paths.items) |path| {
-            obj.addIncludePath(.{
-                .src_path = .{ .owner = b, .sub_path = path },
-            });
+            obj.addIncludePath(path);
         }
         for (system_libs.items) |lib| {
             obj.linkSystemLibrary(lib);

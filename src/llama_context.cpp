@@ -67,6 +67,8 @@ void LlamaContext::_ready() {
 		return;
 	}
 
+	model->load_model();
+
 	if (model->model == NULL) {
 		UtilityFunctions::printerr(vformat("%s: Failed to initialize llama context, model property not defined", __func__));
 		return;
@@ -269,24 +271,24 @@ Ref<LlamaModel> LlamaContext::get_model() {
 	return model;
 }
 
-int LlamaContext::get_seed() {
+uint32_t LlamaContext::get_seed() {
 	return ctx_params.seed;
 }
-void LlamaContext::set_seed(int seed) {
+void LlamaContext::set_seed(uint32_t seed) {
 	ctx_params.seed = seed;
 }
 
-int LlamaContext::get_n_ctx() {
+uint32_t LlamaContext::get_n_ctx() {
 	return ctx_params.n_ctx;
 }
-void LlamaContext::set_n_ctx(int n_ctx) {
+void LlamaContext::set_n_ctx(uint32_t n_ctx) {
 	ctx_params.n_ctx = n_ctx;
 }
 
-int LlamaContext::get_n_len() {
+int32_t LlamaContext::get_n_len() {
 	return n_len;
 }
-void LlamaContext::set_n_len(int n_len) {
+void LlamaContext::set_n_len(int32_t n_len) {
 	this->n_len = n_len;
 }
 
@@ -334,7 +336,11 @@ void LlamaContext::_exit_tree() {
 	if (ctx) {
 		llama_free(ctx);
 	}
-
-	llama_sampling_free(sampling_ctx);
+	if (model->model) {
+		llama_free_model(model->model);
+	}
+	if (sampling_ctx) {
+		llama_sampling_free(sampling_ctx);
+	}
 	llama_backend_free();
 }

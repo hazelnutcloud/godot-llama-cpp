@@ -17,10 +17,10 @@ protected:
 
 public:
 	llama_model *model = nullptr;
-	void load_model(const String &path);
+	void load_model();
 
-	int get_n_gpu_layers();
-	void set_n_gpu_layers(int n);
+	int32_t get_n_gpu_layers();
+	void set_n_gpu_layers(int32_t n);
 
 	LlamaModel();
 	~LlamaModel();
