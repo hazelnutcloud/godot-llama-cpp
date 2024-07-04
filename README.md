@@ -37,18 +37,20 @@ while (true):
 ```
 
 ## Features
-  
-  - Chat formatter for:
-    - [x] Llama3
-    - [x] Mistral
-    - [ ] More to come!
   - Compute backend builds:
     - [x] Metal
-    - [ ] Vulkan
+    - [x] Vulkan
     - [ ] CUDA
   - Asynchronous completion generation
   - Support any language model that llama.cpp supports in GGUF format
   - GGUF files are Godot resources
+
+## Roadmap
+  - [ ] Chat completions support via dedicated library for jinja2 templating in zig
+  - [ ] Grammar support
+  - [ ] Multimodal models support
+  - [ ] Embeddings
+  - [ ] Vector database using LibSQL
 
 ## Building & Installation
 

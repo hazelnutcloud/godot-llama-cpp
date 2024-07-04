@@ -134,7 +134,7 @@ void LlamaContext::__thread_loop() {
 		context_tokens.erase(context_tokens.begin() + shared_prefix_idx, context_tokens.end());
 		request_tokens.erase(request_tokens.begin(), request_tokens.begin() + shared_prefix_idx);
 
-		uint batch_size = std::min(ctx_params.n_batch, (uint)request_tokens.size());
+		int32_t batch_size = std::min(ctx_params.n_batch, (uint32_t)request_tokens.size());
 
 		llama_batch batch = llama_batch_init(batch_size, 0, 1);
 
@@ -176,7 +176,7 @@ void LlamaContext::__thread_loop() {
 			}
 		}
 
-		printf("Request tokens: %d\n", request_tokens.size());
+		printf("Request tokens: %d\n", (int32_t)request_tokens.size());
 		printf("Batch tokens: %d\n", batch.n_tokens);
 		printf("Current token pos: %d\n", curr_token_pos);
 
