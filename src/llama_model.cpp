@@ -3,6 +3,7 @@
 #include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <godot_cpp/classes/engine.hpp>
 
 using namespace godot;
 
@@ -20,6 +21,10 @@ LlamaModel::LlamaModel() {
 
 void LlamaModel::load_model() {
 	if (model) {
+		return;
+	}
+
+	if (Engine::get_singleton()->is_editor_hint()) {
 		return;
 	}
 

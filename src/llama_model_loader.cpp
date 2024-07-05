@@ -20,6 +20,7 @@ Variant godot::LlamaModelLoader::_load(const String &path, const String &origina
 	}
 
   model->set_path(path);
+  model->load_model();
 	
 	return { model };
 }

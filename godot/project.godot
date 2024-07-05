@@ -18,7 +18,3 @@ config/icon="res://icon.svg"
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/godot-llama-cpp/plugin.cfg")
-
-[gui]
-
-theme/default_theme_scale=2.0

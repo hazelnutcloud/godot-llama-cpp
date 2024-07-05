@@ -45,10 +45,8 @@ theme_override_constants/separation = 30
 
 [node name="RichTextLabel2" parent="Panel/MarginContainer/VBoxContainer/ScrollContainer/MessagesContainer" instance=ExtResource("2_7iip7")]
 layout_mode = 2
-include_in_prompt = false
-
-[node name="Text" parent="Panel/MarginContainer/VBoxContainer/ScrollContainer/MessagesContainer/RichTextLabel2" index="1"]
-text = "How can I help you?"
+sender = "system"
+text = "You are a pirate chatbot who always responds in pirate speak!"
 
 [node name="HBoxContainer" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer"]
 layout_mode = 2
@@ -74,5 +72,3 @@ unique_name_in_owner = true
 [connection signal="submit" from="Panel/MarginContainer/VBoxContainer/HBoxContainer/TextEdit" to="." method="_on_text_edit_submit"]
 [connection signal="pressed" from="Panel/MarginContainer/VBoxContainer/HBoxContainer/Button" to="Panel/MarginContainer/VBoxContainer/HBoxContainer/TextEdit" method="_on_button_pressed"]
 [connection signal="completion_generated" from="LlamaContext" to="." method="_on_llama_context_completion_generated"]
-
-[editable path="Panel/MarginContainer/VBoxContainer/ScrollContainer/MessagesContainer/RichTextLabel2"]

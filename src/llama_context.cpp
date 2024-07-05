@@ -67,8 +67,6 @@ void LlamaContext::_enter_tree() {
 		return;
 	}
 
-	model->load_model();
-
 	if (model->model == NULL) {
 		UtilityFunctions::printerr(vformat("%s: Failed to initialize llama context, model property not defined", __func__));
 		return;
@@ -335,9 +333,6 @@ void LlamaContext::_exit_tree() {
 
 	if (ctx) {
 		llama_free(ctx);
-	}
-	if (model->model) {
-		llama_free_model(model->model);
 	}
 	if (sampling_ctx) {
 		llama_sampling_free(sampling_ctx);
