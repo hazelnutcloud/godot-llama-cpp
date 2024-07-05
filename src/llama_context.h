@@ -61,7 +61,7 @@ public:
   void set_presence_penalty(float presence_penalty);
 
 	virtual PackedStringArray _get_configuration_warnings() const override;
-	virtual void _ready() override;
+	virtual void _enter_tree() override;
   virtual void _exit_tree() override;
 	LlamaContext();
 };

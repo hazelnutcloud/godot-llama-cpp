@@ -37,10 +37,12 @@ while (true):
 ```
 
 ## Features
-  - Compute backend builds:
-    - [x] Metal
-    - [x] Vulkan
-    - [ ] CUDA
+  - Platform and compute backend support:
+    | Platform | CPU | Metal | Vulkan | CUDA |
+    |----------|-----|-------|--------|------|
+    | macOS    | ✅  | ✅    | ❌     | ❌   |
+    | Linux    | ✅  | ❌    | ✅     | 🚧   |
+    | Windows  | ✅  | ❌    | 🚧     | 🚧   |
   - Asynchronous completion generation
   - Support any language model that llama.cpp supports in GGUF format
   - GGUF files are Godot resources

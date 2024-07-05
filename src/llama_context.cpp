@@ -61,7 +61,7 @@ LlamaContext::LlamaContext() {
 	ctx_params.n_threads_batch = n_threads;
 }
 
-void LlamaContext::_ready() {
+void LlamaContext::_enter_tree() {
 	// TODO: remove this and use runtime classes once godot 4.3 lands, see https://github.com/godotengine/godot/pull/82554
 	if (Engine::get_singleton()->is_editor_hint()) {
 		return;
